@@ -11,10 +11,10 @@ Everything stays on your Mac: the page and the model are served from `127.0.0.1`
 Requires Apple Silicon and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv run decide.py
+./start.sh
 ```
 
-Then open <http://127.0.0.1:8049>, press **Start camera** and allow it. The first run downloads the model (2.2 GB).
+It starts `decide.py` and opens <http://127.0.0.1:8049> once the model is ready (Ctrl-C stops it). Press **Start camera** and allow it. The first run downloads the model (2.2 GB). Prefer it by hand? `uv run decide.py`, then open the page.
 
 Try thumbs up, thumbs down, OK, peace, open palm, pointing, a fist, a heart with two hands. Then smile, look sad or surprised, or put a hand on your chin to look like you're thinking. Hold each one still for a second, close to the camera.
 
