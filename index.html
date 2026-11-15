@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>d1 gestures · a model that decides, without writing a word</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0F1318; --surface:#161C23; --surface2:#1C232C; --line:#2A3440;
+  --ink:#EEF1F4; --muted:#8E99A7;
+  --remote:#6CB4FF; --local:#F5A946;
+  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --sans:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:clamp(15px,1.05vw,19px);line-height:1.5;margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:4px}
+main{max-width:1360px;margin-inline:auto;padding:clamp(20px,4vh,56px) clamp(16px,4vw,72px);display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px)}
+.eyebrow{font-family:var(--mono);font-size:.78em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:1.02;margin:0;text-wrap:balance;font-size:clamp(1.8rem,3vw,3rem)}
+.lede{color:var(--muted);margin:0;text-wrap:pretty;font-size:clamp(1rem,1.25vw,1.15rem)}
+.lede b{color:var(--ink);font-weight:500}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:.75em 1.4em;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.4em;text-decoration:none}
+.btn:hover{background:#fff}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:8px}
+.facts span{font-family:var(--mono);font-size:.8em;padding:.4em .9em;border-radius:999px;border:1px solid var(--line)}
+.facts b{color:var(--local);font-weight:500}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.hint{font-family:var(--mono);font-size:.8em;color:var(--muted)}
+
+.gest{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(14px,2vw,28px);align-items:start}
+.gest-stage{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.gest-mirror{position:absolute;inset:0;transform:scaleX(-1)}  /* a mirror for you; the boxes use the camera frame's own coordinates */
+.gest-mirror video{width:100%;height:100%;object-fit:fill;display:block}
+.gest-box{position:absolute;border:3px solid var(--local);border-radius:10px;transition:all .12s linear}
+.gest-box span{position:absolute;left:-3px;bottom:100%;transform:scaleX(-1);background:var(--local);color:var(--bg);font:600 1em var(--mono);padding:.2em .6em;border-radius:6px 6px 0 0;white-space:nowrap}
+.gest-box.face{border-color:var(--remote)} .gest-box.face span{background:var(--remote)}
+.gest-box.in span{bottom:auto;top:0;border-radius:0 0 6px 0}  /* a box touching the top edge keeps its label inside */
+.gest-stage p{position:relative;color:var(--muted);padding:2em;text-align:center;margin:0}
+.gest-side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.gest-now{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gest-now div{background:var(--surface);border-radius:12px;padding:8px 14px}
+.gest-now small{display:block;font-family:var(--mono);font-size:.8em;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.gest-now b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(1.25rem,1.95vw,1.85rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gest-bars{display:flex;flex-direction:column;font-size:1.02em;line-height:1.35}
+.gest-bars div{display:grid;grid-template-columns:9.5em 1fr 3em;gap:10px;align-items:center}
+.gest-bars i{height:10px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.gest-bars i::before{content:"";display:block;height:100%;width:calc(var(--p,0)*100%);background:var(--muted);transition:width .15s linear}
+.gest-bars .top i::before{background:var(--local)} .gest-bars .top span{color:var(--ink)}
+.gest-bars span{color:var(--muted)} .gest-bars b{font-family:var(--mono);font-weight:500;text-align:right}
+@media (max-width:1000px){.gest{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head>
+<body><main>
+  <div class="eyebrow">Webcam → decisions · zero tokens generated · Apple Silicon</div>
+  <h1>d1: a model that decides, without writing a word.</h1>
+  <p class="lede"><b>d1-2B</b> by Liquid AI looks at each webcam frame and answers typed questions (which gesture? which expression? where are the hand and the face?) with their probabilities, <b>in one forward pass</b>, powered by <b>mlx-vlm</b>. It generates no tokens: all the work is prefill, and nothing leaves your Mac.</p>
+  <div class="gest">
+    <div class="gest-stage" id="stage">
+      <div class="gest-mirror"><video id="vid" muted playsinline></video><div class="gest-box" id="handBox" hidden><span></span></div><div class="gest-box face" id="faceBox" hidden><span></span></div></div>
+      <p id="idle">Press Start camera, then make a gesture: thumbs up, thumbs down, OK, peace or victory, open palm, a fist, a heart. And try a smile.</p>
+    </div>
+    <div class="gest-side">
+      <div class="gest-now"><div><small>Hand</small><b id="hand">—</b></div><div><small>Face</small><b id="face">—</b></div></div>
+      <div class="gest-bars" id="handBars"></div>
+      <div class="gest-bars" id="faceBars"></div>
+      <div class="facts"><span>ms per decision <b id="ms">—</b></span><span>input tokens <b id="in">—</b></span><span>tokens generated <b>0</b></span><span>decisions/s <b id="rate">—</b></span></div>
+      <div class="ctl"><button type="button" id="go" class="btn">Start camera</button><a class="btn ghost" href="https://huggingface.co/LiquidAI/d1-2B" target="_blank" rel="noopener">d1-2B <span aria-hidden="true">↗</span></a><span class="hint" id="state">LiquidAI/d1-2B-MLX-8bit · mlx-vlm</span></div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+// Labels for the keys of QUESTIONS in decide.py: add a key there, add its label here.
+const HAND = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm', pointing:'☝️ Pointing', heart:'🫶 Heart', fist:'✊ Fist', none:'· No gesture'};
+const FACE = {smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', thinking:'🤔 Thinking', neutral:'😐 Neutral', none:'· No face'};
+const S = {on:false, stream:null, run:0};
+const bars = (el, labels) => { el.innerHTML = Object.entries(labels).map(([k,v])=>`<div data-k="${k}"><span>${v}</span><i></i><b>—</b></div>`).join(''); };
+bars($('#handBars'), HAND); bars($('#faceBars'), FACE);
+
+function box(el, q, ans, labels){  // q.box is in the camera frame's own 0..1 coordinates; the mirror flips it with the video
+  const b = q && q.box; el.hidden = !b || ans.choice==='none'; if(el.hidden) return;
+  Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%'});
+  el.classList.toggle('in', b.top < .08); el.firstChild.textContent = labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
+}
+function show(a, ms, tokens){
+  [['hand', $('#handBars'), HAND, '#hand'], ['face', $('#faceBars'), FACE, '#face']].forEach(([q, el, labels, now])=>{
+    const ans = a[q], p = ans.probabilities || {};
+    el.querySelectorAll('div').forEach(row=>{ const v = p[row.dataset.k] || 0; row.querySelector('i').style.setProperty('--p', v);
+      row.querySelector('b').textContent = Math.round(v*100)+'%'; row.classList.toggle('top', row.dataset.k===ans.choice); });
+    $(now).textContent = ans.choice==='none' ? '—' : labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
+  });
+  box($('#handBox'), a.hand_box, a.hand, HAND); box($('#faceBox'), a.face_box, a.face, FACE);
+  $('#ms').textContent = Math.round(ms); $('#in').textContent = tokens;
+}
+async function loop(run){  // one frame in flight at a time: the next one leaves when the answer comes back
+  const v = $('#vid'), c = document.createElement('canvas');
+  let n = 0, t1 = performance.now();
+  while(S.on && S.run===run){
+    const t0 = performance.now();
+    try{
+      c.width = 640; c.height = Math.round(640 * v.videoHeight / v.videoWidth) || 480;
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      const blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', .85));
+      const r = await fetch('/run', {method:'POST', headers:{'Content-Type':'image/jpeg'}, body:blob});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok || !j.answers) throw new Error(j.error || 'HTTP '+r.status);
+      if(S.run!==run) return;
+      show(j.answers, j.ms, j.usage.input_tokens);
+      n++; const dt = performance.now() - t1; if(dt > 1000){ $('#rate').textContent = (n*1000/dt).toFixed(1); n = 0; t1 = performance.now(); }
+      $('#state').textContent = 'live · round trip '+Math.round(performance.now()-t0)+' ms';
+    }catch(e){
+      $('#state').textContent = 'd1 is not answering (uv run decide.py): '+e.message;
+      await new Promise(r=>setTimeout(r, 1500));
+    }
+  }
+}
+function stop(){
+  S.on = false; S.run++;
+  if(S.stream) S.stream.getTracks().forEach(t=>t.stop()); S.stream = null;
+  $('#vid').srcObject = null; $('#handBox').hidden = $('#faceBox').hidden = true; $('#idle').hidden = false;
+  $('#go').textContent = 'Start camera';
+}
+$('#go').onclick = async ()=>{
+  if(S.on) return stop();
+  const v = $('#vid');
+  try{ S.stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280}, height:{ideal:720}}, audio:false}); }
+  catch(e){ $('#state').textContent = 'camera not available: '+e.message; return; }
+  v.srcObject = S.stream; await v.play(); $('#stage').style.aspectRatio = v.videoWidth+'/'+v.videoHeight; $('#idle').hidden = true;
+  S.on = true; $('#go').textContent = 'Stop camera';
+  loop(++S.run);
+};
+</script>
+</body></html>
