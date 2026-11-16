@@ -2,9 +2,9 @@
 
 Your webcam in, hand gesture and facial expression out, live, on a Mac.
 
-![d1 reading a thumbs up at 99% and a smile at 79%: boxes on the webcam, probability bars, 77 ms per decision, 0 tokens generated](screenshot.png)
+![d1 on the Core AI Neural Engine reading a video file: thumbs up 98% and smile 71% with boxes, 187 ms per decision, 0 tokens generated; the charts show the GPU busy at ~130 W before the switch, then the Neural Engine 90% busy and the Mac at 37 W](screenshot-coreai.png)
 
-[d1-2B](https://huggingface.co/LiquidAI/d1-2B) by Liquid AI is a decision model, not a chat model. Each webcam frame gets four typed questions (which gesture? which expression? where is the hand? where is the face?), and one forward pass answers all of them with calibrated probabilities. It generates **0 tokens**: all the work is prefill. On an M5 Max that is about 70 ms and ~670 input tokens per frame, roughly 14 decisions a second. It runs through [mlx-vlm](https://github.com/Blaizzy/mlx-vlm).
+[d1-2B](https://huggingface.co/LiquidAI/d1-2B) by Liquid AI is a decision model, not a chat model. Each webcam frame gets four typed questions (which gesture? which expression? where is the hand? where is the face?), and one forward pass answers all of them with calibrated probabilities. It generates **0 tokens**: all the work is prefill. On an M5 Max that is about 70 ms and ~600 input tokens per frame, roughly 14 decisions a second. It runs through [mlx-vlm](https://github.com/Blaizzy/mlx-vlm).
 
 Everything stays on your Mac: the page and the model are served from `127.0.0.1`, and no frame is uploaded anywhere.
 
