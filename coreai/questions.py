@@ -1,0 +1,22 @@
+# Copied verbatim from ../decide.py (stage 1-4 must not edit decide.py).
+QUESTIONS = {
+    "hand": {"type": "choice", "instructions": "What gesture is the person making with their hand?",
+             "criteria": {"thumbs_up": "A fist with the thumb pointing up",
+                          "thumbs_down": "A fist with the thumb pointing down",
+                          "ok": "Thumb and index finger touching in a circle, other fingers up",
+                          "peace": "Index and middle finger raised in a V: the peace or victory sign",
+                          "open_palm": "An open hand with the palm facing the camera, fingers spread",
+                          "pointing": "One index finger pointing",
+                          "heart": "Both hands joined in a heart shape",
+                          "fist": "A closed fist, no finger or thumb extended",
+                          "none": "No hand gesture, or no hand visible"}},
+    "face": {"type": "choice", "instructions": "What is the person's facial expression?",
+             "criteria": {"smile": "Smiling or laughing",
+                          "sad": "Sad, frowning, corners of the mouth down",
+                          "surprised": "Surprised, mouth open, eyebrows raised",
+                          "thinking": "Thinking, pensive, hand on the chin or looking up",
+                          "neutral": "Neutral, relaxed face",
+                          "none": "No face visible"}},
+    "hand_box": {"type": "box", "instructions": "Where is the hand making the gesture?"},
+    "face_box": {"type": "box", "instructions": "Where is the person's face?"},
+}

@@ -1,0 +1,13 @@
+.venv/
+*.aimodel
+*.aimodelc
+build/
+out/
+*.npy
+*.npz
+weights/
+swift/.build/
+__pycache__/
+.venv-opt/
+hf/
+dev/

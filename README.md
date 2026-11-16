@@ -33,6 +33,47 @@ To ask something else, edit `QUESTIONS` in `decide.py`. A `choice` question answ
 | `DECIDE_PORT` | `8049` |
 | `DECIDE_MODEL` | `LiquidAI/d1-2B-MLX-8bit` |
 
+## Core AI: the same model on the GPU or the Neural Engine (optional, macOS 27)
+
+The page has a three-way selector: **MLX** (the default), **Core AI GPU** and **Core AI Neural Engine**. The two Core AI backends run d1-2B exported from the PyTorch weights to Core AI as one fixed function, the 640×360 frame in and the answer logits for these four questions out. A small Swift worker runs it; `decide.py` starts it on first use and keeps it warm. `POST /run?backend=mlx|coreai-gpu|coreai-ane` picks the backend per request, and `GET /status` says which are available. Without the worker below, MLX works as before, and the Core AI buttons are disabled with the reason.
+
+The two models are on Hugging Face, [ivanfioravanti/d1-2B-gestures-CoreAI](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) (LFM Open License v1.0, converted from [LiquidAI/d1-2B](https://huggingface.co/LiquidAI/d1-2B)). `decide.py` downloads each one the first time you select it (3.1 GB each, then cached). All you build is the worker (Xcode 27):
+
+```bash
+cd coreai/swift && swift build -c release
+```
+
+To export the models yourself instead (uv, and a checkout of [apple/coreai-models](https://github.com/apple/coreai-models) at `~/github/coreai-models`), then run with `D1_COREAI_DIR=coreai/out`:
+
+```bash
+cd coreai && mkdir -p out
+uv venv -p 3.12 .venv
+uv pip install -p .venv/bin/python "coreai-core==1.0.0b2" "coreai-torch==0.4.2" "torch==2.9.0" "transformers>=5.19,<6" "mlx-vlm==0.7.12" safetensors pillow numpy accelerate
+uv pip install -p .venv/bin/python --no-deps ~/github/coreai-models/python
+hf download LiquidAI/d1-2B                       # the PyTorch weights, 3.8 GB
+.venv/bin/python check_torch.py                  # writes prompt.json and checks the PyTorch port against MLX
+.venv/bin/python export_gpu.py                   # out/d1_gpu_fp16.aimodel (3.1 GB)
+.venv/bin/python export_ane.py                   # out/d1_ane_fp16.aimodel (3.1 GB, Neural Engine layout)
+.venv/bin/python parity.py out/d1_gpu_fp16.aimodel:gpu out/d1_ane_fp16.aimodel:ane   # optional: the parity table
+```
+
+The prompt is baked into the export. If you edit `QUESTIONS`, copy them into `coreai/questions.py`, export again from `check_torch.py` and run with `D1_COREAI_DIR=coreai/out`. Until then, the Core AI backends refuse with that reason. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
+
+Measured on an M5 Max (macOS 27.3) with the same frame. Each decision is timed from the picture to the answers (preprocessing, model, readout), median of 30 after 5 warm-ups. Model time is measured inside the Swift worker:
+
+| | MLX 8-bit | Core AI GPU (fp16) | Core AI Neural Engine (fp16) |
+| --- | --- | --- | --- |
+| per decision | 59 ms | 55 ms | 182 ms |
+| model time only | | 43 ms | 171 ms |
+| first start ever (specialization) | | 12 s | **56 s** |
+| start when cached | | 0.6 s | 0.3 s |
+| size | 2.1 GB | 3.1 GB | 3.1 GB |
+| matches MLX on 9 test frames | reference | 9 / 9 | 8 / 9 |
+
+The Neural Engine build runs the whole graph on the Neural Engine. Its compiled plan is marked `mps.fullyPlacedOnANE` and `mps.noGPUActivity`. It is about 3× slower than the GPU for this 2B model but draws far less power: about 3.2 J per decision against 6.0 J for Core AI GPU and 8.4 J for MLX (whole Mac, above idle). Each MLP is computed in 8 chunks of its hidden channels, which made the Neural Engine 1.4× faster (from 236 to 171 ms); int8 weights did not help it. The first switch to it compiles for the Neural Engine, which takes about a minute once, and the request waits. After that, Core AI's cache makes it start in under a second. Its one miss on the test frames is a uniform mid-gray frame: same answers, but a probability off by 0.051, against the 0.05 tolerance. Every real frame matches. To match the GPU's numbers, the Neural Engine export needed exact rescalings of its weights: the Neural Engine loses precision on very small activations and its sigmoid is coarse. The [model card](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) lists every change. Int8 weights halve the size, but they bring no speedup on the GPU and don't keep parity on the Neural Engine, so they are not used.
+
+With [mactop](https://github.com/metaspartan/mactop) installed (`brew install mactop`), two charts under the video show the last 60 s of the Mac's GPU and Neural Engine load and its power draw, one sample a second, camera on or off, with a mark at each backend switch. **Stop metrics** pauses them, and `decide.py` stops mactop a few seconds later. The figures cover the whole Mac, not just d1: macOS camera effects such as backgrounds also run on the Neural Engine, so turn them off in Control Center → Video Effects before comparing backends. Even with them off, an open camera keeps macOS camera processing busy on the Neural Engine, so for a clean comparison press **Load video** and pick a local movie instead: the page plays it (it never leaves the browser, only its frames go to `decide.py`) and the camera stays closed. On an M5 Max the Neural Engine runs at 100% busy and about 35 W for the whole Mac, while either GPU backend draws about 130 W.
+
 ## Limits
 
 The model looks at one still frame at a time, so it sees poses, not movements: a wave or a nod would need a short clip. Subtle expressions are harder to read, so exaggerate them.

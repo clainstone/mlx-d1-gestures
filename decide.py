@@ -8,13 +8,17 @@
     uv run decide.py            # then open http://127.0.0.1:8049
 
 GET  /       -> index.html, the webcam page
-POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ...}
-GET  /status -> {"model": ..., "ready": true}
+POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ..., "backend": ...}
+             ?backend=mlx (default) | coreai-gpu | coreai-ane: the same model on Core AI, GPU or Neural Engine
+             (optional: needs the artefacts and worker built under coreai/, see the README)
+GET  /status -> {"model": ..., "ready": true, "backends": {name: {"available": bool, "reason": ...}}, "machine": mactop installed}
+GET  /machine -> {"n": sample number, "gpu": %, "ane": %, "watts": W}: the Mac's GPU and Neural Engine load and power, from
+             mactop (brew install mactop), started by the first request and stopped ~5 s after the last one
 
 One forward pass answers every question with calibrated probabilities and generates no tokens.
 Listens on 127.0.0.1 only (DECIDE_PORT, default 8049): frames never leave this Mac.
 """
-import http.server, io, json, os, time
+import http.server, io, json, os, shutil, subprocess, sys, threading, time, urllib.parse
 from mlx_vlm import load
 from PIL import Image
 
@@ -57,13 +61,79 @@ def decide(img):
     return out
 
 
+# Core AI backends (optional): any problem loading them leaves MLX working and says why at /status and /run
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "coreai"))
+    from coreai_backend import CoreAI, Unavailable
+    coreai = CoreAI(model, QUESTIONS)
+except Exception as e:
+    coreai, Unavailable = None, RuntimeError
+    coreai_error = "Core AI backends not loaded: %s" % e
+
+
+def backends():
+    out = {"mlx": {"available": True}}
+    names = ("coreai-gpu", "coreai-ane")
+    why = coreai.available() if coreai else dict.fromkeys(names, coreai_error)
+    out.update({n: {"available": not why[n], **({"reason": why[n]} if why[n] else {})} for n in names})
+    return out
+
+
+def run(img, backend):
+    """One decision on a backend. "ms" is the whole decision for every backend (preprocessing, model, readout);
+    starting a Core AI worker the first time is not part of it and comes back as "startup_s"."""
+    if backend == "mlx":
+        return decide(img)
+    if backend not in ("coreai-gpu", "coreai-ane"):
+        raise ValueError("backend is one of mlx, coreai-gpu, coreai-ane, not %r" % backend)
+    if coreai is None:
+        raise Unavailable(coreai_error)
+    startup = coreai.start(backend)
+    t = time.perf_counter()
+    out = coreai.decide(backend, img)
+    out["ms"] = round((time.perf_counter() - t) * 1000, 1)
+    if startup:
+        out["startup_s"] = round(startup, 1)
+    return out
+
+
+MACHINE = {}  # the latest mactop sample: GPU / Neural Engine busy %, whole-Mac watts, and its number "n"
+WATCH = {"proc": None, "asked": 0.0}
+
+
+def machine():
+    """The latest sample. The first call starts mactop; it stops ~5 s after the page stops asking (its metrics switch)."""
+    WATCH["asked"] = time.time()
+    if WATCH["proc"] is None and shutil.which("mactop"):
+        WATCH["proc"] = subprocess.Popen(["mactop", "--headless", "--count", "0", "-i", "500"], stdout=subprocess.PIPE,
+                                         stderr=subprocess.DEVNULL, text=True)
+        threading.Thread(target=watch_machine, args=(WATCH["proc"],), daemon=True).start()
+    return dict(MACHINE)
+
+
+def watch_machine(p):
+    for line in p.stdout:  # one JSON object a sample, ~1/s
+        if time.time() - WATCH["asked"] > 5:
+            break
+        try:
+            s = json.loads(line)["soc_metrics"]
+            MACHINE.update(n=MACHINE.get("n", 0) + 1, gpu=round(s["gpu_active"]), ane=round(s["ane_active"]),
+                           watts=round(s["total_power"], 1))
+        except (ValueError, KeyError, TypeError):
+            pass
+    p.kill()
+    MACHINE.clear()
+    WATCH["proc"] = None
+
 decide(Image.new("RGB", (640, 480), "gray"))  # warm-up: the first pass costs ~1.5 s
 
 
 class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose: one frame at a time on the GPU
-    def _send(self, code, body, ctype):
+    def _send(self, code, body, ctype, headers=None):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -73,21 +143,34 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
 
     def do_GET(self):
         if self.path in ("/", "/index.html"):
-            return self._send(200, open(PAGE, "rb").read(), "text/html; charset=utf-8")
+            return self._send(200, open(PAGE, "rb").read(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
+        if self.path == "/machine":
+            return self._json(200, machine())
         if self.path == "/status":
-            return self._json(200, {"model": MODEL, "ready": True})
+            return self._json(200, {"model": MODEL, "ready": True, "backends": backends(), "machine": shutil.which("mactop") is not None})
         self._json(404, {"error": "unknown path"})
 
     def do_POST(self):
-        if self.path != "/run":
+        url = urllib.parse.urlsplit(self.path)
+        if url.path != "/run":
             return self._json(404, {"error": "unknown path"})
+        backend = urllib.parse.parse_qs(url.query).get("backend", ["mlx"])[0]
         n = int(self.headers.get("Content-Length") or 0)
         if not 0 < n <= MAX_FRAME:
             return self._json(413, {"error": "send one JPEG frame, up to 4 MB"})
+        body = self.rfile.read(n)
         try:
-            self._json(200, decide(Image.open(io.BytesIO(self.rfile.read(n))).convert("RGB")))
+            img = Image.open(io.BytesIO(body)).convert("RGB")
         except Exception as e:
-            self._json(400, {"error": str(e)})
+            return self._json(400, {"error": "not a picture: %s" % e, "backend": backend})
+        try:
+            self._json(200, {**run(img, backend), "backend": backend})
+        except Unavailable as e:  # never a silent fallback to MLX
+            self._json(503, {"error": "%s is not available: %s" % (backend, e), "backend": backend})
+        except ValueError as e:
+            self._json(400, {"error": str(e), "backend": backend})
+        except Exception as e:
+            self._json(500, {"error": "%s failed: %s" % (backend, e), "backend": backend})
 
     def log_message(self, *a):
         pass
