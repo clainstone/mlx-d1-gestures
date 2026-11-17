@@ -62,7 +62,8 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 .gest-left{display:flex;flex-direction:column;gap:14px;min-width:0}
 .gest-side{display:flex;flex-direction:column;gap:10px;min-width:0}
 .gest-now{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.gest-now div{background:var(--surface);border-radius:12px;padding:8px 14px}
+.gest-now button{background:var(--surface);border:0;border-radius:12px;padding:8px 14px;text-align:left;cursor:pointer;min-width:0}
+.gest-now button[aria-pressed="false"]{opacity:.4}  /* switched off: no box, no bars */
 .gest-now small{display:block;font-family:var(--mono);font-size:.8em;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .gest-now b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(1.1rem,1.6vw,1.6rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gest-bars{display:flex;flex-direction:column;font-size:.95em;line-height:1.3}
@@ -91,7 +92,7 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
       </div>
     </div>
     <div class="gest-side">
-      <div class="gest-now"><div><small>Hand</small><b id="hand">—</b></div><div><small>Face</small><b id="face">—</b></div></div>
+      <div class="gest-now"><button type="button" data-q="hand" aria-pressed="true" title="Hide or show the hand box and its decision"><small>Hand</small><b id="hand">—</b></button><button type="button" data-q="face" aria-pressed="true" title="Hide or show the face box and its decision"><small>Face</small><b id="face">—</b></button></div>
       <div class="gest-bars" id="handBars"></div>
       <div class="gest-bars" id="faceBars"></div>
       <div class="ctl"><div class="seg" id="be" role="radiogroup" aria-label="Backend"><button type="button" role="radio" data-b="mlx" aria-checked="true">MLX</button><button type="button" role="radio" data-b="coreai-gpu" aria-checked="false" disabled>Core AI GPU</button><button type="button" role="radio" data-b="coreai-ane" aria-checked="false" disabled>Core AI Neural Engine</button></div></div>
@@ -121,20 +122,26 @@ fetch('/status').then(r=>r.json()).then(j=>{
 }).catch(()=>{});
 const bars = (el, labels) => { el.innerHTML = Object.entries(labels).map(([k,v])=>`<div data-k="${k}"><span>${v}</span><i></i><b>—</b></div>`).join(''); };
 bars($('#handBars'), HAND); bars($('#faceBars'), FACE);
+const OFF = {};  // tap Hand or Face to hide its box and its decision
+document.querySelectorAll('.gest-now button').forEach(b=>b.onclick = ()=>{
+  const q = b.dataset.q; OFF[q] = !OFF[q]; b.setAttribute('aria-pressed', !OFF[q]);
+  $('#'+q+'Bars').hidden = OFF[q]; if(OFF[q]){ $('#'+q+'Box').hidden = true; $('#'+q).textContent = 'off'; }
+});
 
-function box(el, q, ans, labels){  // q.box is in the camera frame's own 0..1 coordinates; the mirror flips it with the video
-  const b = q && q.box; el.hidden = !b || ans.choice==='none'; if(el.hidden) return;
+function box(el, q, ans, labels, off){  // q.box is in the camera frame's own 0..1 coordinates; the mirror flips it with the video
+  const b = q && q.box; el.hidden = off || !b || ans.choice==='none'; if(el.hidden) return;
   Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%'});
   el.classList.toggle('in', b.top < .08); el.firstChild.textContent = labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
 }
 function show(a, ms, tokens){
   [['hand', $('#handBars'), HAND, '#hand'], ['face', $('#faceBars'), FACE, '#face']].forEach(([q, el, labels, now])=>{
+    if(OFF[q]) return;
     const ans = a[q], p = ans.probabilities || {};
     el.querySelectorAll('div').forEach(row=>{ const v = p[row.dataset.k] || 0; row.querySelector('i').style.setProperty('--p', v);
       row.querySelector('b').textContent = Math.round(v*100)+'%'; row.classList.toggle('top', row.dataset.k===ans.choice); });
     $(now).textContent = ans.choice==='none' ? '—' : labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
   });
-  box($('#handBox'), a.hand_box, a.hand, HAND); box($('#faceBox'), a.face_box, a.face, FACE);
+  box($('#handBox'), a.hand_box, a.hand, HAND, OFF.hand); box($('#faceBox'), a.face_box, a.face, FACE, OFF.face);
   $('#ms').textContent = Math.round(ms); $('#in').textContent = tokens;
 }
 async function loop(run){  // one frame in flight at a time: the next one leaves when the answer comes back

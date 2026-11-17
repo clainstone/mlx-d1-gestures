@@ -28,6 +28,7 @@ final class Live {
     var size = CGSize(width: 16, height: 9)  // the decided frame's, for its boxes
     var rate = 0.0
     var inputTokens = 0
+    var off: Set<String> = []  // "hand" / "face" switched off with a tap: no box, no bars
     let camera = Camera()
     private var d1: D1?
     private var loop: Task<Void, Never>?
@@ -172,7 +173,7 @@ struct Stage: View {
     @ViewBuilder func boxes(_ s: CGSize) -> some View {
         if let a = live.decision?.answers {
             ForEach([("hand_box", "hand", HAND, Color.orange), ("face_box", "face", FACE, Color.teal)], id: \.0) { key, q, labels, color in
-                if let b = a.boxes[key]?.box, let c = a.choices[q], c.choice != "none" {
+                if !live.off.contains(q), let b = a.boxes[key]?.box, let c = a.choices[q], c.choice != "none" {
                     let u = Frame.uncrop(b, Int(live.size.width), Int(live.size.height))
                     let r = CGRect(x: u.left * s.width, y: u.top * s.height, width: (u.right - u.left) * s.width, height: (u.bottom - u.top) * s.height)
                     RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: 3)
@@ -198,11 +199,13 @@ struct Side: View {
         let a = live.decision?.answers
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                headline("Hand", a?.choices["hand"], HAND)
-                headline("Face", a?.choices["face"], FACE)
+                headline("hand", a?.choices["hand"], HAND)
+                headline("face", a?.choices["face"], FACE)
             }
-            bars(a?.choices["hand"], HAND, order: ["thumbs_up", "thumbs_down", "ok", "peace", "open_palm", "pointing", "fist", "none"])
-            bars(a?.choices["face"], FACE, order: ["smile", "sad", "surprised", "neutral"])
+            if !live.off.contains("hand") {
+                bars(a?.choices["hand"], HAND, order: ["thumbs_up", "thumbs_down", "ok", "peace", "open_palm", "pointing", "fist", "none"])
+            }
+            if !live.off.contains("face") { bars(a?.choices["face"], FACE, order: ["smile", "sad", "surprised", "neutral"]) }
             Picker("Backend", selection: Binding(get: { live.compute }, set: { c in Task { await live.select(c) } })) {
                 ForEach(D1.Compute.allCases, id: \.self) { Text("Core AI " + $0.label).tag($0) }
             }
@@ -212,14 +215,24 @@ struct Side: View {
         }
     }
 
-    func headline(_ title: String, _ c: ChoiceAnswer?, _ labels: [String: String]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title.uppercased()).font(.caption2.monospaced()).foregroundStyle(.secondary)
-            Text(c.map { $0.choice == "none" ? "—" : "\(labels[$0.choice] ?? $0.choice) \(Int($0.confidence * 100))%" } ?? "—")
-                .font(.headline).lineLimit(1).minimumScaleFactor(0.6)
+    /// Tap to switch the question's box and bars off (and on again).
+    func headline(_ q: String, _ c: ChoiceAnswer?, _ labels: [String: String]) -> some View {
+        let off = live.off.contains(q)
+        return Button {
+            if off { live.off.remove(q) } else { live.off.insert(q) }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(q.uppercased()).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                Text(off ? "off" : c.map { $0.choice == "none" ? "—" : "\(labels[$0.choice] ?? $0.choice) \(Int($0.confidence * 100))%" } ?? "—")
+                    .font(.headline).lineLimit(1).minimumScaleFactor(0.6)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10).background(Color.white.opacity(0.05), in: .rect(cornerRadius: 12))
+            .opacity(off ? 0.4 : 1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10).background(Color.white.opacity(0.05), in: .rect(cornerRadius: 12))
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(q), \(off ? "off" : "on")")
+        .accessibilityHint("Shows or hides its box and its decision")
     }
 
     func bars(_ c: ChoiceAnswer?, _ labels: [String: String], order: [String]) -> some View {
