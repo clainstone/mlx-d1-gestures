@@ -39,7 +39,7 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 .seg button:hover:not(:disabled){color:var(--ink)}
 .seg button[aria-checked="true"]{background:var(--surface2);color:var(--ink)}
 .seg button:disabled{opacity:.35;cursor:not-allowed}
-.mon{position:relative;display:flex;flex-direction:column;gap:4px;--c-gpu:#d95926;--c-ane:#199e70}  /* dataviz dark slots, validated on --surface */
+.mon{position:relative;display:flex;flex-direction:column;gap:4px;--c-cpu:#3987e5;--c-gpu:#d95926;--c-ane:#199e70}  /* dataviz dark slots, validated on --surface */
 .mon .lg button{margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:999px;padding:.15em .8em;color:var(--ink);cursor:pointer}
 .mon .lg button:hover{border-color:var(--muted)}
 .mon .lg{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--mono);font-size:.75em;color:var(--muted)}
@@ -85,8 +85,8 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
         <p id="idle">Press Start camera (or Load video), then make a gesture: thumbs up, thumbs down, OK, peace or victory, open palm, a fist, a heart. And try a smile.</p>
       </div>
       <div class="mon" id="machine">
-        <div class="lg"><span><i style="background:var(--c-gpu)"></i>GPU</span><span><i style="background:var(--c-ane)"></i>Neural Engine</span><span>busy %</span><span><i style="background:#EEF1F4"></i>Mac power, W</span><span>whole Mac (mactop), last 60 s</span><button type="button" id="metrics" aria-pressed="true">Stop metrics</button></div>
-        <div class="charts"><svg id="chBusy" viewBox="0 0 400 112" role="img" aria-label="GPU and Neural Engine busy percent over the last 60 seconds"></svg><svg id="chPow" viewBox="0 0 400 112" role="img" aria-label="Mac power in watts over the last 60 seconds"></svg></div>
+        <div class="lg"><span><i style="background:var(--c-cpu)"></i>CPU</span><span><i style="background:var(--c-gpu)"></i>GPU</span><span><i style="background:var(--c-ane)"></i>Neural Engine</span><span>busy %</span><span><i style="background:#EEF1F4"></i>Mac power, W</span><span>whole Mac (mactop), last 60 s</span><button type="button" id="metrics" aria-pressed="true">Stop metrics</button></div>
+        <div class="charts"><svg id="chBusy" viewBox="0 0 400 112" role="img" aria-label="CPU, GPU and Neural Engine busy percent over the last 60 seconds"></svg><svg id="chPow" viewBox="0 0 400 112" role="img" aria-label="Mac power in watts over the last 60 seconds"></svg></div>
         <div class="tip" id="tip" hidden></div>
       </div>
     </div>
@@ -117,7 +117,7 @@ fetch('/status').then(r=>r.json()).then(j=>{
     const b = document.querySelector(`#be button[data-b="${k}"]`); if(!b) return;
     b.disabled = !v.available; b.title = v.available ? NAMES[k] : 'not available: '+v.reason;
   });
-  if(j.machine === false){ MON.off = true; MON.note = 'Install mactop (brew install mactop) to see GPU and Neural Engine load here.'; draw(); }
+  if(j.machine === false){ MON.off = true; MON.note = 'Install mactop (brew install mactop) to see CPU, GPU and Neural Engine load here.'; draw(); }
 }).catch(()=>{});
 const bars = (el, labels) => { el.innerHTML = Object.entries(labels).map(([k,v])=>`<div data-k="${k}"><span>${v}</span><i></i><b>—</b></div>`).join(''); };
 bars($('#handBars'), HAND); bars($('#faceBars'), FACE);
@@ -161,9 +161,9 @@ async function loop(run){  // one frame in flight at a time: the next one leaves
     }
   }
 }
-// Live charts of the Mac's GPU / Neural Engine busy % and watts (GET /machine, mactop, ~1 sample/s), recorded with or
+// Live charts of the Mac's CPU / GPU / Neural Engine busy % and watts (GET /machine, mactop, ~1 sample/s), recorded with or
 // without the camera; the Stop metrics switch stops polling, and the server stops mactop a few seconds later.
-const MON = {pts:[], n:-1, hover:null, on:true, note:'Waiting for the first sample…'}, SPAN = 60000, SERIES = [['gpu','GPU'],['ane','Neural Engine']];
+const MON = {pts:[], n:-1, hover:null, on:true, note:'Waiting for the first sample…'}, SPAN = 60000, SERIES = [['cpu','CPU'],['gpu','GPU'],['ane','Neural Engine']];
 const SHORT = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI ANE', 'off':'camera off'};
 NAMES.off = 'camera off';
 async function poll(){
@@ -209,7 +209,7 @@ function draw(){
   };
   const yb = v => y0 + (1 - v / 100) * (y1 - y0);
   chart('chBusy', [0, 50, 100].map(v => [yb(v), v + '%']), SERIES.map(([k]) => [`var(--c-${k})`, p => yb(p[k])]),
-        last ? SERIES.map(([k]) => ({y: yb(last[k]), c: `var(--c-${k})`, t: `${k === 'ane' ? 'ANE' : 'GPU'} ${last[k]}%`})) : [], true);
+        last ? SERIES.map(([k]) => ({y: yb(last[k]), c: `var(--c-${k})`, t: `${k === 'ane' ? 'ANE' : k.toUpperCase()} ${last[k]}%`})) : [], true);
   // watts: one series, its own chart (never a second y-scale on the % chart)
   const top = Math.max(50, Math.ceil(Math.max(0, ...V.map(p => p.watts)) / 50) * 50), yp = v => y0 + (1 - v / top) * (y1 - y0);
   chart('chPow', [0, top / 2, top].map(v => [yp(v), v + ' W']), [['#EEF1F4', p => yp(p.watts)]],

@@ -12,7 +12,7 @@ POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": 
              ?backend=mlx (default) | coreai-gpu | coreai-ane: the same model on Core AI, GPU or Neural Engine
              (optional: needs the artefacts and worker built under coreai/, see the README)
 GET  /status -> {"model": ..., "ready": true, "backends": {name: {"available": bool, "reason": ...}}, "machine": mactop installed}
-GET  /machine -> {"n": sample number, "gpu": %, "ane": %, "watts": W}: the Mac's GPU and Neural Engine load and power, from
+GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}: the Mac's CPU, GPU and Neural Engine load and power, from
              mactop (brew install mactop), started by the first request and stopped ~5 s after the last one
 
 One forward pass answers every question with calibrated probabilities and generates no tokens.
@@ -97,7 +97,7 @@ def run(img, backend):
     return out
 
 
-MACHINE = {}  # the latest mactop sample: GPU / Neural Engine busy %, whole-Mac watts, and its number "n"
+MACHINE = {}  # the latest mactop sample: CPU / GPU / Neural Engine busy %, whole-Mac watts, and its number "n"
 WATCH = {"proc": None, "asked": 0.0}
 
 
@@ -116,8 +116,9 @@ def watch_machine(p):
         if time.time() - WATCH["asked"] > 5:
             break
         try:
-            s = json.loads(line)["soc_metrics"]
-            MACHINE.update(n=MACHINE.get("n", 0) + 1, gpu=round(s["gpu_active"]), ane=round(s["ane_active"]),
+            j = json.loads(line)
+            s = j["soc_metrics"]
+            MACHINE.update(n=MACHINE.get("n", 0) + 1, cpu=round(j["cpu_usage"]), gpu=round(s["gpu_active"]), ane=round(s["ane_active"]),
                            watts=round(s["total_power"], 1))
         except (ValueError, KeyError, TypeError):
             pass
