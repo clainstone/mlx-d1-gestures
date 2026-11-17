@@ -7,20 +7,22 @@ worker (swift/.build/release/d1worker), one warm process per backend, started on
                                                # (74 s on the first Neural Engine run ever), then seconds
     backends.decide("coreai-gpu", image)       # system_one's output for a PIL frame
 
-The exported graph has the prompt for QUESTIONS baked in: edit QUESTIONS and these backends say so instead of
-answering other questions.
+The questions are an input of the exported graph: the prompt for QUESTIONS is built here at start-up (it needs the
+input embedding table, embed_tokens_fp16.npy, 500 MB, downloaded with the first model) and any QUESTIONS whose prompt
+fits the export's sizes (d1_common.T_MAX etc.) run on the same models.
 
 The models come from https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI (Hugging Face cache, offline after the
-first download); D1_COREAI_DIR=/path/to/folder with d1_gpu_fp16.aimodel / d1_ane_fp16.aimodel uses your own export instead.
+first download); D1_COREAI_DIR=/path/to/folder with d1_gpu_prompt_fp16.aimodel / d1_ane_prompt_fp16.aimodel (and
+embed_tokens_fp16.npy, else coreai/out's or the repo's) uses your own export instead.
 """
 import json, os, subprocess, tempfile, time
 import numpy as np
-from d1_common import META, build_meta, frame, load_meta, pixels, readout, uncrop_box
+from d1_common import S_MAX, build_meta, embeddings, frame, pixels, prompt_inputs, prompt_problem, readout, uncrop_box
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORKER = os.path.join(HERE, "swift", ".build", "release", "d1worker")
 REPO = "ivanfioravanti/d1-2B-gestures-CoreAI"
-MODELS = {"coreai-gpu": ("d1_gpu_fp16.aimodel", "gpu"), "coreai-ane": ("d1_ane_fp16.aimodel", "ane")}
+MODELS = {"coreai-gpu": ("d1_gpu_prompt_fp16.aimodel", "gpu"), "coreai-ane": ("d1_ane_prompt_fp16.aimodel", "ane")}
 LOCAL = os.environ.get("D1_COREAI_DIR")
 
 
@@ -38,8 +40,8 @@ class Unavailable(Exception):
 
 
 class Worker:
-    def __init__(self, path, compute):
-        self.p = subprocess.Popen([WORKER, "--model", path, "--compute", compute], stdin=subprocess.PIPE,
+    def __init__(self, path, compute, prompt_dir):
+        self.p = subprocess.Popen([WORKER, "--model", path, "--compute", compute, "--prompt", prompt_dir], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, text=True, bufsize=1)
         self.ready = self.read()  # specialises (first time ever: minutes on the Neural Engine) and runs once
         self.pix = tempfile.NamedTemporaryFile(prefix="d1-%s-" % compute, suffix=".f32", delete=False).name
@@ -57,20 +59,15 @@ class Worker:
         x.astype(np.float32).tofile(self.pix)
         self.p.stdin.write(json.dumps({"pixels": self.pix}) + "\n")
         self.p.stdin.flush()
-        return np.array(self.read()["logits"], dtype=np.float32).reshape(12, -1)
+        return np.array(self.read()["logits"], dtype=np.float32).reshape(S_MAX, -1)
 
 
 class CoreAI:
     def __init__(self, model, questions):
         self.engine, self.questions, self.workers = model.engine, questions, {}
-        self.meta, self.problem = None, None
-        if not os.path.exists(META):
-            self.problem = "coreai/prompt.json is missing"
-        else:
-            self.meta = load_meta()
-            now = build_meta(self.engine, questions, write=False)
-            if any(now[k] != self.meta[k] for k in ("ids", "slots", "union")):
-                self.problem = "QUESTIONS changed since the Core AI export: re-export (see README, Core AI)"
+        self.meta = build_meta(self.engine, questions, write=False)  # the prompt for these QUESTIONS
+        self.problem = prompt_problem(self.meta)
+        self.prompt_dir = None
 
     def available(self):
         out = {}
@@ -93,8 +90,22 @@ class CoreAI:
             path = model_path(name)
         except Exception as e:  # offline before the first download, or the repo unreachable
             raise Unavailable("could not download %s from huggingface.co/%s: %s" % (MODELS[name][0], REPO, e))
-        self.workers[name] = Worker(path, MODELS[name][1])
+        self.workers[name] = Worker(path, MODELS[name][1], self.prompt())
         return time.perf_counter() - t
+
+    def prompt(self):
+        """The prompt inputs for QUESTIONS as the worker reads them, written once."""
+        if self.prompt_dir is None:
+            emb = np.load(os.path.join(LOCAL, "embed_tokens_fp16.npy"), mmap_mode="r") if LOCAL and os.path.exists(
+                os.path.join(LOCAL, "embed_tokens_fp16.npy")) else embeddings()
+            d = tempfile.mkdtemp(prefix="d1-prompt-")
+            arrays = prompt_inputs(self.meta, emb)
+            for k, v in arrays.items():
+                v.tofile(os.path.join(d, k + ".f16"))
+            with open(os.path.join(d, "shapes.json"), "w") as f:
+                json.dump({k: list(v.shape) for k, v in arrays.items()}, f)
+            self.prompt_dir = d
+        return self.prompt_dir
 
     def decide(self, name, img):
         w = self.workers[name]

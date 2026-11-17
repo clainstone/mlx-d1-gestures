@@ -1,0 +1,5 @@
+D1Kit/.build/
+D1Kit/Tests/D1KitTests/Fixtures/
+D1Gestures/D1Gestures.xcodeproj/
+DerivedData/
+.swiftpm/

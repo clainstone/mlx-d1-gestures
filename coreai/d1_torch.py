@@ -1,15 +1,18 @@
-"""d1-2B's decision pass for our four questions as one fixed-shape PyTorch function (GPU layout):
+"""d1-2B's decision pass as one fixed-shape PyTorch function (GPU layout), the questions an input:
 
-    image [1, 3, 352, 640] in [-1, 1]  ->  logits [12, U]
+    image [1, 3, 352, 640] in [-1, 1], and the prompt (d1_common.prompt_inputs, fp16):
+    text [T_MAX - 220, D], head [U_MAX, D], attend [T_MAX, T_MAX], slots [S_MAX, T_MAX]  ->  logits [S_MAX, U_MAX]
 
 Re-authored from mlx-vlm's lfm3 / lfm3_vl / d1_lfm3_vl (itself a port of the LiquidAI PyTorch code); weights from
-LiquidAI/d1-2B safetensors. Prompt ids, set/sliding masks and RoPE tables are constants (prompt.json).
+LiquidAI/d1-2B safetensors. RoPE tables and the sliding mask are constants for T_MAX tokens; the image sits at
+IMAGE_START, the prompt pads at the end (every layer but full attention is causal, and its mask is an input).
 """
 import glob, json, math, os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from safetensors import safe_open
+from d1_common import IMAGE_START, T_MAX
 
 CKPT = os.path.expanduser("~/.cache/huggingface/hub/models--LiquidAI--d1-2B/snapshots/*/")  # hf download LiquidAI/d1-2B
 
@@ -43,7 +46,7 @@ def unwrap(module, n):
 
 class D1Fixed(nn.Module):
 
-    def __init__(self, meta, dtype=torch.float16):
+    def __init__(self, meta, dtype=torch.float16):  # meta: any prompt (build_meta), for the image grid and window
         super().__init__()
         path = glob.glob(CKPT)[0]
         cfg = json.load(open(path + "config.json"))
@@ -92,14 +95,7 @@ class D1Fixed(nn.Module):
         mp = "model.multi_modal_projector."
         self.proj = {k: P(g(mp + k)) for k in ("layer_norm.weight", "layer_norm.bias", "linear_1.weight", "linear_1.bias",
                                                 "linear_2.weight", "linear_2.bias")}
-        # text: constant embeddings around the image, slot embeddings for the head
         lm = "model.language_model."
-        emb = g(lm + "embed_tokens.weight")
-        ids = torch.tensor(meta["ids"])
-        s, n = meta["image_start"], meta["image_len"]
-        self.pre = P(emb[ids[:s]], q=False)
-        self.post = P(emb[ids[s + n:]], q=False)
-        self.head = P(emb[torch.tensor(meta["union"])])
         self.final_norm = P(g(lm + "embedding_norm.weight"))
         self.layers = []
         for i, kind in enumerate(self.tc["layer_types"]):
@@ -114,8 +110,8 @@ class D1Fixed(nn.Module):
                 for k in ("q_proj", "k_proj", "v_proj", "o_proj", "q_norm", "k_norm", "gate_proj"):
                     L[k] = P(g(pre + "self_attn.%s.weight" % k))
             self.layers.append(L)
-        # text RoPE and masks
-        T = len(meta["ids"])
+        # text RoPE and the sliding mask, for T_MAX tokens
+        T = T_MAX
         self.T = T
         pos = torch.arange(T, dtype=torch.float64)
         for kind in ("full_attention", "sliding_attention"):
@@ -128,15 +124,10 @@ class D1Fixed(nn.Module):
             a = torch.cat([a, a], -1)
             self._const(kind + "_cos", a.cos().to(dtype))
             self._const(kind + "_sin", a.sin().to(dtype))
-        q = torch.tensor(meta["question"])
         p = torch.arange(T)
-        sl = meta["state_len"]
-        full = (p[:, None] < sl) | (p[None] < sl) | (q[:, None] == q[None])
         slide = (p[:, None] >= p[None]) & (p[:, None] < p[None] + meta["sliding_window"])
-        neg = torch.finfo(dtype).min / 2
-        self._const("full_attention_mask", torch.zeros(T, T).masked_fill(~full, neg).to(dtype))
-        self._const("sliding_attention_mask", torch.zeros(T, T).masked_fill(~slide, neg).to(dtype))
-        self._const("slots", torch.tensor([s["pos"] for s in meta["slots"]]))
+        self.neg = torch.finfo(dtype).min / 2
+        self._const("sliding_attention_mask", torch.zeros(T, T).masked_fill(~slide, self.neg).to(dtype))
 
     def _const(self, name, t):  # frozen parameter: torch.export lifts it as a weight, not as a graph input
         self.register_parameter(name, nn.Parameter(t, requires_grad=False))
@@ -183,10 +174,12 @@ class D1Fixed(nn.Module):
         return F.linear(x, pj["linear_2.weight"], pj["linear_2.bias"])  # [220, 2048]
 
     # ---- language ----
-    def forward(self, image):
+    def forward(self, image, text, head, attend, slots):
         tc, T = self.tc, self.T
         D, H, Hk, hd = tc["hidden_size"], tc["num_attention_heads"], tc["num_key_value_heads"], tc["head_dim"]
-        x = torch.cat([self.w(self.pre), self.vision(image), self.w(self.post)], 0)[None]  # [1, T, D]
+        dt = self.dtype
+        x = torch.cat([text[:IMAGE_START].to(dt), self.vision(image), text[IMAGE_START:].to(dt)], 0)[None]  # [1, T, D]
+        masks = {"full_attention": (attend.to(dt) - 1) * -self.neg, "sliding_attention": self.w("sliding_attention_mask")}
         for L in self.layers:
             h = rms(x, self.w(L["operator_norm"]))
             if L["kind"] == "conv":
@@ -201,10 +194,10 @@ class D1Fixed(nn.Module):
                 v = F.linear(h, self.w(L["v_proj"])).reshape(1, T, Hk, hd).transpose(1, 2)
                 q, k = rotate(q, cos, sin), rotate(k, cos, sin)
                 k, v = k.repeat_interleave(H // Hk, 1), v.repeat_interleave(H // Hk, 1)
-                o = F.scaled_dot_product_attention(q, k, v, attn_mask=self.w(kind + "_mask"), scale=hd ** -0.5)
+                o = F.scaled_dot_product_attention(q, k, v, attn_mask=masks[kind], scale=hd ** -0.5)
                 o = o.transpose(1, 2) * torch.sigmoid(F.linear(h, self.w(L["gate_proj"])))[..., None]
                 h = F.linear(o.reshape(1, T, D), self.w(L["o_proj"]))
             x = x + rms(h, self.w(L["post_operator_norm"]))
             x = x + rms(mlp(rms(x, self.w(L["ffn_norm"])), self.W(L["mlp"])), self.w(L["post_ffn_norm"]))
         x = rms(x, self.w(self.final_norm))[0]
-        return (x[self.slots] @ self.w(self.head).T).float()  # [12, U]
+        return ((slots.to(dt) @ x) @ head.to(dt).T).float()  # [S_MAX, U_MAX]

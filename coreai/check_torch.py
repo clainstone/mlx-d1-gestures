@@ -6,7 +6,7 @@ import argparse, json, time
 import numpy as np, torch
 from PIL import Image
 from mlx_vlm import load
-from d1_common import build_meta, frame, pixels, mlx_logits, readout
+from d1_common import build_meta, embeddings, frame, pixels, prompt_inputs, mlx_logits, readout
 from questions import QUESTIONS
 from d1_torch import D1Fixed
 
@@ -30,9 +30,10 @@ t = time.time()
 m = D1Fixed(meta, dt).to(a.device).eval()
 print("torch model built in %.1fs" % (time.time() - t))
 x = torch.from_numpy(pixels(eng, img)).to(a.device)
+prompt = {k: torch.from_numpy(v).to(a.device) for k, v in prompt_inputs(meta, embeddings()).items()}
 with torch.no_grad():
     t = time.time()
-    out = m(x).cpu().numpy()
+    out = m(x, **prompt).cpu().numpy()[:len(meta["slots"]), :len(meta["union"])]
     print("torch forward %.1fs" % (time.time() - t))
 np.save("out/check_torch_%s_%s.npy" % (a.dtype, a.device), out)
 err = out - ref

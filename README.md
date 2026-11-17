@@ -18,7 +18,7 @@ Requires Apple Silicon and [uv](https://docs.astral.sh/uv/).
 
 It starts `decide.py` and opens <http://127.0.0.1:8049> once the model is ready (Ctrl-C stops it). Press **Start camera** and allow it. The first run downloads the model (2.2 GB). Prefer it by hand? `uv run decide.py`, then open the page.
 
-Try thumbs up, thumbs down, OK, peace, open palm, pointing, a fist, a heart with two hands. Then smile, look sad or surprised, or put a hand on your chin to look like you're thinking. Hold each one still for a second, close to the camera.
+Try thumbs up, thumbs down, OK, peace, open palm, pointing, a fist. Then smile, look sad or surprised, or keep a neutral face. Hold each one still for a second, close to the camera.
 
 ## How it works
 
@@ -35,9 +35,9 @@ To ask something else, edit `QUESTIONS` in `decide.py`. A `choice` question answ
 
 ## Core AI: the same model on the GPU or the Neural Engine (optional, macOS 27)
 
-The page has a three-way selector: **MLX** (the default), **Core AI GPU** and **Core AI Neural Engine**. The two Core AI backends run d1-2B exported from the PyTorch weights to Core AI as one fixed function, the 640×360 frame in and the answer logits for these four questions out. A small Swift worker runs it; `decide.py` starts it on first use and keeps it warm. `POST /run?backend=mlx|coreai-gpu|coreai-ane` picks the backend per request, and `GET /status` says which are available. Without the worker below, MLX works as before, and the Core AI buttons are disabled with the reason.
+The page has a three-way selector: **MLX** (the default), **Core AI GPU** and **Core AI Neural Engine**. The two Core AI backends run d1-2B exported from the PyTorch weights to Core AI as one fixed-shape function: the 640×360 frame and the prompt for `QUESTIONS` in, the answer logits out. The questions are an input, not part of the model. A small Swift worker runs it; `decide.py` starts it on first use and keeps it warm. `POST /run?backend=mlx|coreai-gpu|coreai-ane` picks the backend per request, and `GET /status` says which are available. Without the worker below, MLX works as before, and the Core AI buttons are disabled with the reason.
 
-The two models are on Hugging Face, [ivanfioravanti/d1-2B-gestures-CoreAI](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) (LFM Open License v1.0, converted from [LiquidAI/d1-2B](https://huggingface.co/LiquidAI/d1-2B)). `decide.py` downloads each one the first time you select it (3.1 GB each, then cached). All you build is the worker (Xcode 27):
+The two models are on Hugging Face, [ivanfioravanti/d1-2B-gestures-CoreAI](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) (LFM Open License v1.0, converted from [LiquidAI/d1-2B](https://huggingface.co/LiquidAI/d1-2B)). `decide.py` downloads each one the first time you select it (3.1 GB each, then cached), plus d1's input embedding table (500 MB), which it needs to build the prompt. All you build is the worker (Xcode 27):
 
 ```bash
 cd coreai/swift && swift build -c release
@@ -52,12 +52,12 @@ uv pip install -p .venv/bin/python "coreai-core==1.0.0b2" "coreai-torch==0.4.2" 
 uv pip install -p .venv/bin/python --no-deps ~/github/coreai-models/python
 hf download LiquidAI/d1-2B                       # the PyTorch weights, 3.8 GB
 .venv/bin/python check_torch.py                  # writes prompt.json and checks the PyTorch port against MLX
-.venv/bin/python export_gpu.py                   # out/d1_gpu_fp16.aimodel (3.1 GB)
-.venv/bin/python export_ane.py                   # out/d1_ane_fp16.aimodel (3.1 GB, Neural Engine layout)
-.venv/bin/python parity.py out/d1_gpu_fp16.aimodel:gpu out/d1_ane_fp16.aimodel:ane   # optional: the parity table
+.venv/bin/python export_gpu.py                   # out/d1_gpu_prompt_fp16.aimodel (3.1 GB)
+.venv/bin/python export_ane.py                   # out/d1_ane_prompt_fp16.aimodel (3.1 GB, Neural Engine layout)
+.venv/bin/python parity.py out/d1_gpu_prompt_fp16.aimodel:gpu out/d1_ane_prompt_fp16.aimodel:ane   # optional: the parity table
 ```
 
-The prompt is baked into the export. If you edit `QUESTIONS`, copy them into `coreai/questions.py`, export again from `check_torch.py` and run with `D1_COREAI_DIR=coreai/out`. Until then, the Core AI backends refuse with that reason. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
+The questions are not baked into the export. `decide.py` builds the prompt for `QUESTIONS` when it starts, so after editing them the Core AI backends answer the new questions with the same models. The export is padded to fixed sizes: up to 640 tokens of prompt (the image is 220 of them; today's questions use 578), 16 answer positions (a choice takes 1, a box 5) and 1152 readout tokens. Questions that don't fit make the Core AI backends refuse with the sizes, and MLX still works. `export_gpu.py` / `export_ane.py` trace the function with the prompt from `coreai/questions.py`, which only sets the shapes. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
 
 Measured on an M5 Max (macOS 27.3) with the same frame. Each decision is timed from the picture to the answers (preprocessing, model, readout), median of 30 after 5 warm-ups. Model time is measured inside the Swift worker:
 

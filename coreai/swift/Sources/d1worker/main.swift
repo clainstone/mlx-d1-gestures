@@ -1,6 +1,9 @@
 // d1worker: the exported d1 decision function on Core AI, as a JSON-lines worker.
 //
-//   d1worker --model out/d1_gpu_fp16.aimodel --compute gpu|ane
+//   d1worker --model out/d1_gpu_prompt_fp16.aimodel --compute gpu|ane --prompt DIR
+//
+// DIR holds the prompt inputs (d1_common.prompt_inputs) as raw fp16 files text.f16, head.f16, attend.f16, slots.f16 and
+// their shapes in shapes.json ({"text": [420, 2048], ...}): the questions, set once for the worker's life.
 //
 // stdin, one JSON object a line:
 //   {"pixels": "/path/frame.f32"}                         -> {"logits": [12 x U floats, row-major], "ms": ...}
@@ -51,7 +54,9 @@ func flatten(_ array: NDArray) -> [Float] {
 @main
 struct Worker {
     static func main() async throws {
-        guard let path = arg("--model") else { fputs("usage: d1worker --model X.aimodel --compute gpu|ane\n", stderr); exit(2) }
+        guard let path = arg("--model"), let promptDir = arg("--prompt") else {
+            fputs("usage: d1worker --model X.aimodel --compute gpu|ane --prompt DIR\n", stderr); exit(2)
+        }
         let kind: ComputeUnitKind = (arg("--compute") ?? "gpu") == "ane" ? .neuralEngine : .gpu
         let url = URL(fileURLWithPath: path)
 
@@ -64,6 +69,17 @@ struct Worker {
         let loadFn = now() - t
 
         var input = NDArray(shape: [1, 3, 352, 640], scalarType: .float32)
+        var prompt: [String: NDArray] = [:]
+        let dir = URL(fileURLWithPath: promptDir)
+        let shapes = try JSONSerialization.jsonObject(with: Data(contentsOf: dir.appendingPathComponent("shapes.json"))) as! [String: [Int]]
+        for (name, shape) in shapes {
+            let data = try Data(contentsOf: dir.appendingPathComponent(name + ".f16"))
+            precondition(data.count == shape.reduce(1, *) * 2, "\(name): expected \(shape) fp16")
+            var a = NDArray(shape: shape, scalarType: .float16)
+            var v = a.mutableView(as: Float16.self)
+            v.withUnsafeMutablePointer { ptr, _, _ in data.withUnsafeBytes { src in _ = memcpy(ptr, src.baseAddress!, data.count) } }
+            prompt[name] = a
+        }
         func fill(_ file: String) throws {
             let data = try Data(contentsOf: URL(fileURLWithPath: file))
             precondition(data.count == 3 * 352 * 640 * 4, "expected 3*352*640 float32")
@@ -73,7 +89,7 @@ struct Worker {
             }
         }
         func run() async throws -> [Float] {
-            var outputs = try await fn.run(inputs: ["image": input])
+            var outputs = try await fn.run(inputs: prompt.merging(["image": input]) { $1 })
             guard let out = outputs.remove("logits")?.ndArray else { fatalError("no logits output") }
             let flat = flatten(out)
             if out.shape.count == 4 {  // BC1S [1, U, 1, 12] -> [12, U]

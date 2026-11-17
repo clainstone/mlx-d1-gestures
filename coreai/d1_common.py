@@ -82,6 +82,57 @@ def load_meta():
         return json.load(f)
 
 
+# The exported function takes the prompt as inputs, padded to these sizes: any QUESTIONS whose prompt fits run on the
+# same .aimodel. The image sits at IMAGE_START (the system prefix before it does not depend on the questions).
+T_MAX, S_MAX, U_MAX, IMAGE_START, IMAGE_LEN = 640, 16, 1152, 5, 220
+
+
+def prompt_problem(meta):
+    """Why these questions don't fit the export, or None."""
+    T, S, U = len(meta["ids"]), len(meta["slots"]), len(meta["union"])
+    if (meta["image_start"], meta["image_len"]) != (IMAGE_START, IMAGE_LEN):
+        return "the image is at %d (%d tokens), the export expects %d (%d)" % (meta["image_start"], meta["image_len"], IMAGE_START, IMAGE_LEN)
+    if T > T_MAX or S > S_MAX or U > U_MAX:
+        return ("QUESTIONS need %d tokens, %d answer slots, %d readout tokens; the Core AI export fits %d, %d, %d"
+                % (T, S, U, T_MAX, S_MAX, U_MAX))
+    return None
+
+
+def prompt_inputs(meta, emb):
+    """The function's prompt inputs for `meta` (build_meta), fp16 numpy; `emb` [vocab, D] the input embeddings:
+    text [T_MAX - IMAGE_LEN, D] (the text tokens' embeddings, the image left out), head [U_MAX, D] (the readout tokens'),
+    attend [T_MAX, T_MAX] (1 where query row i reads key j in full attention), slots [S_MAX, T_MAX] (one-hot rows)."""
+    why = prompt_problem(meta)
+    if why:
+        raise ValueError(why)
+    ids, T, S, U = meta["ids"], len(meta["ids"]), len(meta["slots"]), len(meta["union"])
+    s, n = meta["image_start"], meta["image_len"]
+    D = emb.shape[1]
+    text = np.zeros((T_MAX - n, D), np.float16)
+    text[:T - n] = np.asarray(emb[ids[:s] + ids[s + n:]], np.float16)
+    head = np.zeros((U_MAX, D), np.float16)
+    head[:U] = np.asarray(emb[meta["union"]], np.float16)
+    p = np.arange(T_MAX)
+    q = np.array(meta["question"] + [-2] * (T_MAX - T))  # padding: its own group, after everything (causal layers)
+    sl, real = meta["state_len"], p < T
+    # d1's set mask (d1.set_masks): the state reads and is read both ways, each question reads itself; the state does
+    # not read the padding (nothing real does)
+    full = ((p[:, None] < sl) & real[None]) | (p[None] < sl) | (q[:, None] == q[None])
+    slots = np.zeros((S_MAX, T_MAX), np.float16)
+    slots[np.arange(S), [x["pos"] for x in meta["slots"]]] = 1
+    return {"text": text, "head": head, "attend": full.astype(np.float16), "slots": slots}
+
+
+def embeddings():
+    """d1-2B's input embedding table [128000, 2048] fp16 (memory-mapped): from the PyTorch weights here, else the
+    Core AI repo's copy (prompt inputs need the exact embeddings, not the MLX model's 8-bit ones)."""
+    path = os.path.join(HERE, "out", "embed_tokens_fp16.npy")
+    if not os.path.exists(path):
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download("ivanfioravanti/d1-2B-gestures-CoreAI", "embed_tokens_fp16.npy")
+    return np.load(path, mmap_mode="r")
+
+
 def pixels(engine, img):
     """The processor's own pixel_values for a 640x360 frame, folded back into the [1, 3, 352, 640] image the exported
     graph takes (exact: the patches are a permutation of it, both temporal copies equal)."""
