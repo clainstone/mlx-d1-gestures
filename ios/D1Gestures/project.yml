@@ -1,0 +1,34 @@
+# xcodegen generate   (then open D1Gestures.xcodeproj, pick your team under Signing, run on an iPhone or iPad)
+name: D1Gestures
+options:
+  bundleIdPrefix: com.ifioravanti
+  deploymentTarget: { iOS: "27.0" }
+packages:
+  D1Kit: { path: ../D1Kit }
+targets:
+  D1Gestures:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies: [{ package: D1Kit }]
+    entitlements:
+      path: D1Gestures.entitlements
+      properties:
+        com.apple.developer.kernel.increased-memory-limit: true     # 3.1 GB of weights
+        com.apple.developer.kernel.extended-virtual-addressing: true
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: d1
+        NSCameraUsageDescription: d1 reads your hand gesture and facial expression from the front camera. Frames stay on this device.
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ifioravanti.d1gestures
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: A9QFT53S44   # Devocracy srl; yours, or pick it in Xcode

@@ -82,7 +82,7 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
     <div class="gest-left">
       <div class="gest-stage" id="stage">
         <div class="gest-mirror"><video id="vid" muted playsinline></video><div class="gest-box" id="handBox" hidden><span></span></div><div class="gest-box face" id="faceBox" hidden><span></span></div></div>
-        <p id="idle">Press Start camera (or Load video), then make a gesture: thumbs up, thumbs down, OK, peace or victory, open palm, a fist, a heart. And try a smile.</p>
+        <p id="idle">Press Start camera (or Load video), then make a gesture: thumbs up, thumbs down, OK, peace or victory, open palm, a fist. And try a smile.</p>
       </div>
       <div class="mon" id="machine">
         <div class="lg"><span><i style="background:var(--c-cpu)"></i>CPU</span><span><i style="background:var(--c-gpu)"></i>GPU</span><span><i style="background:var(--c-ane)"></i>Neural Engine</span><span>busy %</span><span><i style="background:#EEF1F4"></i>Mac power, W</span><span>whole Mac (mactop), last 60 s</span><button type="button" id="metrics" aria-pressed="true">Stop metrics</button></div>
@@ -103,8 +103,8 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 <script>
 const $ = s => document.querySelector(s);
 // Labels for the keys of QUESTIONS in decide.py: add a key there, add its label here.
-const HAND = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm', pointing:'☝️ Pointing', heart:'🫶 Heart', fist:'✊ Fist', none:'· No gesture'};
-const FACE = {smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', thinking:'🤔 Thinking', neutral:'😐 Neutral', none:'· No face'};
+const HAND = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm', pointing:'☝️ Pointing', fist:'✊ Fist', none:'· No gesture'};
+const FACE = {smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
 const S = {on:false, stream:null, url:null, src:null, run:0, backend:'mlx'};
 const NAMES = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI Neural Engine'};
 document.querySelectorAll('#be button').forEach(b=>b.onclick = ()=>{

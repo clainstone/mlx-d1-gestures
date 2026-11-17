@@ -3,11 +3,13 @@ BC1S layout [1, C, 1, S] (vision NCHW [1, C, 22, 40]), 1x1 Conv2d projections, p
 `bchq,bkhc->bkhq` einsum, softmax over the key (channel) axis, additive masks (1, key, 1, query) at -40000,
 fp16 everywhere (no fp32 literals: every scalar is an fp16 constant), the projector's 2x2 merge as a stride-2 conv.
 
-    image [1, 3, 352, 640] fp32 in [-1, 1]  ->  logits [1, U, 1, 12] fp16
+    image [1, 3, 352, 640] fp32 in [-1, 1], and the prompt as d1_torch (text, head, attend, slots; fp16)
+        ->  logits [1, U_MAX, 1, S_MAX] fp16
 """
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from d1_common import IMAGE_START
 from d1_torch import D1Fixed, _W, unwrap
 
 NEG = -40000.0
@@ -34,7 +36,7 @@ class D1ANE(nn.Module):
 
         self.c = {}
         for k, v in {"one": 1.0, "half": 0.5, "eps": 1e-5, "eps_ln": 1e-6, "v_scale": (self.vc["hidden_size"] // self.vc["num_attention_heads"]) ** -0.5,
-                     "t_scale": self.tc["head_dim"] ** -0.5, "pre": 8.0, "eps_pre": 1e-5 * 64.0, "eps_v": 1e-5 * self.VS ** 2, "inv_vs": 1 / self.VS, "inv_ts": 1 / self.TS, "inv_ps": 1 / self.PATCH, "eps_pconv": 1e-5 * self.PS["conv"] ** 2, "eps_pattn": 1e-5 * self.PS["attn"] ** 2, "eps_pmlp": 1e-5 * self.PS["mlp"] ** 2}.items():
+                     "t_scale": self.tc["head_dim"] ** -0.5, "ts": self.TS, "neg": -NEG, "pre": 8.0, "eps_pre": 1e-5 * 64.0, "eps_v": 1e-5 * self.VS ** 2, "inv_vs": 1 / self.VS, "inv_ts": 1 / self.TS, "inv_ps": 1 / self.PATCH, "eps_pconv": 1e-5 * self.PS["conv"] ** 2, "eps_pattn": 1e-5 * self.PS["attn"] ** 2, "eps_pmlp": 1e-5 * self.PS["mlp"] ** 2}.items():
             self.c[k] = C("c_" + k, torch.tensor([v]))
         self.patch = C("patch", w(src.patch))
         self.v_norm = C("v_norm", col(w(src.v_norm)))
@@ -64,9 +66,6 @@ class D1ANE(nn.Module):
         self.l1b = C("l1b", pj["linear_1.bias"])
         self.l2 = C("l2", conv(pj["linear_2.weight"]))
         self.l2b = C("l2b", pj["linear_2.bias"])
-        bc1s = lambda t: t.T.reshape(1, t.shape[1], 1, t.shape[0])  # [S, D] -> [1, D, 1, S]
-        self.pre_e, self.post_e = C("pre_e", bc1s(w(src.pre))), C("post_e", bc1s(w(src.post)))
-        self.head = C("head", conv(w(src.head)))
         self.final_norm = C("final_norm", col(w(src.final_norm)))
         self.ll = []
         for i, L in enumerate(src.layers):
@@ -86,9 +85,8 @@ class D1ANE(nn.Module):
         for kind in ("full_attention", "sliding_attention"):
             C(kind + "_cos", w(kind + "_cos").T.reshape(1, 1, thd, T))
             C(kind + "_sin", w(kind + "_sin").T.reshape(1, 1, thd, T))
-            m = (w(kind + "_mask") < 0).T  # [key, query]
-            C(kind + "_mask", torch.zeros(T, T).masked_fill(m, NEG).reshape(1, T, 1, T))
-        self.slots = [int(s) for s in src.slots.tolist()]
+        m = (w("sliding_attention_mask") < 0).T  # [key, query]; the full attention mask is an input (attend)
+        C("sliding_attention_mask", torch.zeros(T, T).masked_fill(m, NEG).reshape(1, T, 1, T))
         self.taps = None  # debug: a list collects intermediates, forward then returns (logits, *taps)
         self.rescale()
         self.split_mlps()
@@ -132,12 +130,11 @@ class D1ANE(nn.Module):
                 L["operator_norm"] = None
                 fold(L["ffn_norm"], [m["w1"], m["w3"]]); L["ffn_norm"] = None
                 rows(m["w3"], 0, None, self.S[p + "mlp"]); scale(m["w2"], 1 / self.S[p + "mlp"])
-        fold(self.final_norm, [self.head]); self.final_norm = None
         scale(self.v_norm, self.VS)
         scale(self.patch, self.PATCH)
         for L in self.vl:
             scale(L["out_proj"], self.VS); scale(L["mlp"]["w2"], self.VS)
-        for n in (self.pre_e, self.post_e, self.l2, self.l2b):
+        for n in (self.l2, self.l2b):  # the text embeddings are scaled by TS in the graph (an input now)
             scale(n, self.TS)
         for L in self.ll:
             scale(L["post_operator_norm"], self.TS); scale(L["post_ffn_norm"], self.TS)
@@ -255,10 +252,10 @@ class D1ANE(nn.Module):
         x = F.conv2d(x, self.g(self.l2), self.g(self.l2b))  # [1, 2048, gh/2, gw/2]
         return self._t(x.reshape(1, x.shape[1], 1, -1))  # [1, 2048, 1, 220], blocks in raster order
 
-    def forward(self, image):
-        return self.language(self.vision(image))
+    def forward(self, image, text, head, attend, slots):
+        return self.language(self.vision(image), text, head, attend, slots)
 
-    def layer(self, L, x):
+    def layer(self, L, x, full):
         tc, T = self.tc, self.T
         D, H, Hk, hd = tc["hidden_size"], tc["num_attention_heads"], tc["num_key_value_heads"], tc["head_dim"]
         h = self.norm(x, L["operator_norm"], "eps_t")
@@ -273,20 +270,52 @@ class D1ANE(nn.Module):
             q = self.rope(q, cos, sin) * self.k("t_scale")
             k = self.rope(k, cos, sin)
             o = self.attention(q.reshape(1, H * hd, 1, T), k.reshape(1, Hk * hd, 1, T), self.proj(h, L["v_proj"]), H, Hk, hd,
-                           self.g("p_" + kind + "_mask"))
+                           full if kind == "full_attention" else self.g("p_sliding_attention_mask"))
             g = self.sigmoid(self.proj(h, L["gate_proj"]))  # [1, H, 1, T]
             h = self.proj((o.reshape(1, H, hd, T) * g.reshape(1, H, 1, T)).reshape(1, D, 1, T), L["o_proj"])
         x = x + self.norm(h, L["post_operator_norm"], "eps_pconv" if L["kind"] == "conv" else "eps_pattn")
         return self._t(x + self.norm(self.mlp(self.norm(x, L["ffn_norm"], "eps_t"), L["mlp"]), L["post_ffn_norm"], "eps_pmlp"))
 
-    def language(self, feats):
-        """feats [1, 2048, 1, 220] (the projector's output) -> logits [1, U, 1, 12]"""
+    def language(self, feats, text, head, attend, slots):
+        """feats [1, 2048, 1, 220] (the projector's output) and the prompt -> logits [1, U_MAX, 1, S_MAX]"""
         tc, T = self.tc, self.T
-        D, H, Hk, hd = tc["hidden_size"], tc["num_attention_heads"], tc["num_key_value_heads"], tc["head_dim"]
-        x = torch.cat([self.g(self.pre_e), feats.to(torch.float16) if feats.dtype != self.g(self.pre_e).dtype else feats,
-                       self.g(self.post_e)], dim=3)  # [1, D, 1, T]
+        D = tc["hidden_size"]
+        h16 = torch.float16
+        t = text.to(h16).transpose(0, 1).reshape(1, D, 1, -1) * self.k("ts")  # the LM stream is carried at TS x
+        x = torch.cat([t[:, :, :, :IMAGE_START], feats.to(h16), t[:, :, :, IMAGE_START:]], dim=3)  # [1, D, 1, T]
+        full = ((attend.to(h16).transpose(0, 1) - self.k("one")) * self.k("neg")).reshape(1, T, 1, T)  # [1, key, 1, query]
         for L in self.ll:
-            x = self.layer(L, x)
-        x = torch.cat([x[:, :, :, s:s + 1] for s in self.slots], dim=3)  # [1, D, 1, 12]
-        out = self.proj(self.norm(x, self.final_norm, "eps_t"), self.head)  # [1, U, 1, 12]
+            x = self.layer(L, x, full)
+        x = torch.einsum("bdht,st->bdhs", x, slots.to(h16))  # [1, D, 1, S_MAX]
+        out = torch.einsum("bdhs,ud->buhs", self.norm(x, self.final_norm, "eps_t"), head.to(h16))  # [1, U_MAX, 1, S_MAX]
         return out if self.taps is None else (out, *self.taps)
+
+
+class D1ANEPart(nn.Module):
+    """One piece of D1ANE, for a Neural Engine that can't compile the whole 3.1 GB function at once (iOS: "Could not
+    retrieve data from weight file"): text layers [lo, hi), the first piece with the vision and the embeddings, the last
+    with the readout. Pieces pass the LM stream x [1, D, 1, T_MAX] (fp16, carried at TS x) from one to the next:
+
+        first: image, text, attend -> x      middle: x, attend -> x      last: x, attend, slots, head -> logits
+    """
+
+    def __init__(self, ane: D1ANE, lo, hi):
+        super().__init__()
+        self.ane, self.lo, self.hi = ane, lo, hi
+        self.first, self.last = lo == 0, hi == len(ane.ll)
+
+    def forward(self, image=None, text=None, attend=None, x=None, slots=None, head=None):
+        a, h16 = self.ane, torch.float16
+        T, D = a.T, a.tc["hidden_size"]
+        if self.first:
+            t = text.to(h16).transpose(0, 1).reshape(1, D, 1, -1) * a.k("ts")
+            x = torch.cat([t[:, :, :, :IMAGE_START], a.vision(image).to(h16), t[:, :, :, IMAGE_START:]], dim=3)
+        else:
+            x = x.to(h16)
+        full = ((attend.to(h16).transpose(0, 1) - a.k("one")) * a.k("neg")).reshape(1, T, 1, T)
+        for L in a.ll[self.lo:self.hi]:
+            x = a.layer(L, x, full)
+        if not self.last:
+            return x
+        x = torch.einsum("bdht,st->bdhs", x, slots.to(h16))
+        return torch.einsum("bdhs,ud->buhs", a.norm(x, a.final_norm, "eps_t"), head.to(h16))
