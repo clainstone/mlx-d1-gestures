@@ -116,12 +116,22 @@ struct ContentView: View {
     @State private var live = Live()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 20) {
-            VStack(spacing: 12) {
-                Stage(live: live)
-                Stats(live: live)
+        GeometryReader { g in
+            if g.size.height > g.size.width {  // portrait: the camera on top, the rest under it
+                VStack(spacing: 12) {
+                    Stage(live: live, portrait: true).frame(maxHeight: g.size.height * 0.5)
+                    Stats(live: live)
+                    ScrollView { Side(live: live) }
+                }
+            } else {
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(spacing: 12) {
+                        Stage(live: live, portrait: false)
+                        Stats(live: live)
+                    }
+                    ScrollView { Side(live: live) }.frame(width: 300)
+                }
             }
-            ScrollView { Side(live: live) }.frame(width: 300)
         }
         .padding(16)
         .background(Color(red: 0.05, green: 0.07, blue: 0.09))
@@ -130,8 +140,10 @@ struct ContentView: View {
 }
 
 /// The mirrored camera with the hand and face boxes on it (the boxes mirror with the picture, their labels don't).
+/// In portrait the frame is 9:16 and d1 sees it letterboxed (Frame.crop16x9).
 struct Stage: View {
     let live: Live
+    let portrait: Bool
 
     var body: some View {
         ZStack {
@@ -153,7 +165,8 @@ struct Stage: View {
                 .padding(24)
             }
         }
-        .aspectRatio(16 / 9, contentMode: .fit)
+        .aspectRatio(portrait ? 9 / 16 : 16 / 9, contentMode: .fit)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder func boxes(_ s: CGSize) -> some View {

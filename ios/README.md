@@ -11,14 +11,16 @@ and a real device: Core AI is not in the Simulator. The model is 3.1 GB, so a re
 cd ios/D1Gestures && xcodegen generate && open D1Gestures.xcodeproj
 ```
 
-Pick your team under Signing & Capabilities and run it on the device, in landscape. The first launch downloads the
+Pick your team under Signing & Capabilities and run it on the device, in landscape or portrait (in portrait d1 sees
+the frame letterboxed into its 16:9 input, so hands and faces are smaller to it). The first launch downloads the
 Neural Engine model from [Hugging Face](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) (3.3 GB, keep the
 app open), and the first start on the Neural Engine compiles it for about a minute; after that it starts in about a
 second. The Neural Engine is the default; the GPU is one tap away and downloads its own model the first time.
 
 The Neural Engine model comes in 4 pieces (`d1_ane_prompt_split_fp16/part0…3.aimodel`, run in order, the LM stream
 passed from one to the next): iOS's Neural Engine compiler fails on the whole 3.1 GB function ("Could not retrieve data
-from weight file") and Core AI then quietly runs it on the GPU. On the Mac the pieces run as fast as the whole (181 ms).
+from weight file") and Core AI then quietly runs it on the GPU. On the Mac the pieces run as fast as the whole (181 ms);
+on an iPad Pro M5 they compile in about 4.5 minutes the first time and then decide in about 230 ms (GPU: about 205 ms).
 
 The questions are not in the models: the app bundles their prompt inputs (`D1Kit/Sources/D1Kit/prompt/`, made by
 `coreai/export_app.py` from `QUESTIONS`). To ask something else, edit `QUESTIONS` (decide.py and coreai/questions.py),

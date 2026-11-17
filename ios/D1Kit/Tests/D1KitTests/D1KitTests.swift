@@ -81,6 +81,18 @@ func edges(_ b: Box) -> [String: Double] { ["top": b.top, "bottom": b.bottom, "l
             == Box(top: 240.0 / 480, bottom: 240.0 / 480, left: 0.25, right: 0.75))
 }
 
+/// A portrait frame is letterboxed: black bars left and right, the picture in the middle, boxes mapped back onto it.
+@Test func portraitLetterbox() {
+    let mid = Box(top: 0, bottom: 1, left: 0.5 - 0.5 * 720 / 2275, right: 0.5 + 0.5 * 720 / 2275)  // the picture's span
+    let u = Frame.uncrop(mid, 720, 1280)
+    #expect(abs(u.left) < 0.002 && abs(u.right - 1) < 0.002 && u.top == 0 && u.bottom == 1)
+    let ctx = CGContext(data: nil, width: 720, height: 1280, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    ctx.setFillColor(gray: 1, alpha: 1); ctx.fill(CGRect(x: 0, y: 0, width: 720, height: 1280))
+    let px = Frame.pixels(ctx.makeImage()!), row = 176 * 640
+    #expect(px[row + 10] == -1 && px[row + 320] == 1 && px[row + 630] == -1)  // bar, picture, bar
+}
+
 /// Picture -> Swift pixels -> Core AI -> Swift readout, against MLX end to end (parity.py's gate: same choices, top
 /// probability within 0.05, box edges within 0.03).
 @Test(.enabled(if: ProcessInfo.processInfo.environment["D1_MODEL"] != nil)) func endToEndMatchesMlx() async throws {

@@ -4,8 +4,11 @@
 import CoreGraphics
 
 public enum Frame {
-    /// The centre 16:9 rectangle of a w x h picture, in pixels (d1_common.crop16x9).
+    /// The centre 16:9 rectangle of a w x h picture, in pixels (d1_common.crop16x9). A portrait picture (taller than
+    /// wide) is letterboxed instead: the rectangle is wider than the picture, black on both sides, as a 16:9 crop of it
+    /// would keep only a band across the middle.
     public static func crop16x9(_ w: Int, _ h: Int) -> CGRect {
+        if h > w { let nw = h * 16 / 9; return CGRect(x: (w - nw) / 2, y: 0, width: nw, height: h) }
         if w * 9 > h * 16 { let nw = h * 16 / 9; return CGRect(x: (w - nw) / 2, y: 0, width: nw, height: h) }
         if w * 9 < h * 16 { let nh = w * 9 / 16; return CGRect(x: 0, y: (h - nh) / 2, width: w, height: nh) }
         return CGRect(x: 0, y: 0, width: w, height: h)
@@ -18,34 +21,41 @@ public enum Frame {
                    left: (c.minX + b.left * c.width) / W, right: (c.minX + b.right * c.width) / W)
     }
 
-    /// The centre 16:9 crop of `image`.
+    /// The centre 16:9 crop of `image` (not for portrait pictures, which are letterboxed when drawn).
     public static func cropped(_ image: CGImage) -> CGImage {
         let c = crop16x9(image.width, image.height)
         return c.size == CGSize(width: image.width, height: image.height) ? image : image.cropping(to: c)!
     }
 
-    /// `image` (any shape: it is centre-cropped to 16:9 first) as the model's input, channels first.
+    /// `image` (any shape: it is centre-cropped to 16:9 first, or letterboxed if portrait) as the model's input, channels first.
     public static func pixels(_ image: CGImage, width: Int = 640, height: Int = 352) -> [Float] {
         let fw = width, fh = width * 9 / 16  // the 16:9 frame, 640x360
-        let px = resample(rgba(cropped(image), fw, fh), fw, fh, width, height)
+        let px: [UInt8]
+        if image.height > image.width {
+            let pw = Double(fh) * Double(image.width) / Double(image.height)
+            px = rgba(image, fw, fh, in: CGRect(x: (Double(fw) - pw) / 2, y: 0, width: pw, height: Double(fh)))
+        } else {
+            px = rgba(cropped(image), fw, fh)
+        }
+        let rs = resample(px, fw, fh, width, height)
         let n = width * height
         var out = [Float](repeating: 0, count: 3 * n)
         for i in 0..<n {
-            for c in 0..<3 { out[c * n + i] = Float(px[i * 4 + c]) / 127.5 - 1 }
+            for c in 0..<3 { out[c * n + i] = Float(rs[i * 4 + c]) / 127.5 - 1 }
         }
         return out
     }
 
     /// `image` drawn at w x h, RGBA 8-bit, rows top to bottom. ponytail: CoreGraphics' scaler for the camera frame to
     /// 640x360, as the page's canvas does it (not exact either); a 640x360 picture is copied as it is.
-    static func rgba(_ image: CGImage, _ w: Int, _ h: Int) -> [UInt8] {
+    static func rgba(_ image: CGImage, _ w: Int, _ h: Int, in rect: CGRect? = nil) -> [UInt8] {
         var out = [UInt8](repeating: 0, count: w * h * 4)
         out.withUnsafeMutableBytes { buf in
             let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                 space: image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!,
                                 bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
             ctx.interpolationQuality = .high
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            ctx.draw(image, in: rect ?? CGRect(x: 0, y: 0, width: w, height: h))  // the rest stays black
         }
         return out
     }
