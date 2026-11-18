@@ -23,10 +23,23 @@ Try thumbs up, thumbs down, OK, peace, open palm, pointing, a fist. Then smile, 
 ## How it works
 
 1. The browser draws each webcam frame onto a canvas and posts it as a 640 px JPEG to `POST /run`. The next frame is sent only after the answer for this one comes back.
-2. `decide.py` passes the frame and `QUESTIONS` to `model.system_one(...)`, which runs one forward pass on the GPU.
-3. The page draws the probabilities as bars, plus the two boxes on the mirrored video.
+2. `decide.py` passes the frame and the active questions to `model.system_one(...)`, which runs one forward pass on the GPU.
+3. The page draws one tile and the probabilities as bars per question, plus the boxes on the mirrored video. Tap a tile to hide it and its box.
 
-To ask something else, edit `QUESTIONS` in `decide.py`. A `choice` question answers with one key of its `criteria`, and a `box` question answers with where the thing is. If you add or rename a key, also add its label to `HAND` / `FACE` in `index.html`.
+### Your own questions
+
+Open **Questions** on the page to ask d1 something else, on the camera or a video file: pick a preset (*Gestures & face*, the default; *People & objects*; *Counting*; *At the desk*) or build your own, then press **Ask these**. Each question has a name, a type and the question itself:
+
+| Type | Answers | Core AI answer slots |
+| --- | --- | --- |
+| Yes / No (`noul`) | the probability of yes | 1 |
+| Choice | one of its options (a key and what it looks like), with every option's probability | 1 |
+| Score | one of 2 to 10 levels, lowest first | 1 |
+| Number | a count or an amount in a range ("How many free tables are in the image?", 0 to 20, step 1), with a 10–90% interval | 1 |
+| Box | where the thing is, and whether it is there | 5 |
+| Boxes | every one of them, up to a max: where, and how many | 5 per box (default 3) |
+
+A box named `X_box` goes with the question `X`: one tile, and the box is labelled with `X`'s answer, as the hand and face are by default. The set is kept in your browser, and **copy link** gives a link that opens the page with it. Up to 12 questions; `POST /questions` with `{"questions": {...}}` does the same without the page, and `GET /questions` returns the active set. The Core AI backends answer any set that fits their export (see below): the panel shows how much of it a set uses, and a set too big for it runs on MLX only. The default questions are `QUESTIONS` in `decide.py`.
 
 | Variable | Default |
 | --- | --- |
@@ -57,7 +70,7 @@ hf download LiquidAI/d1-2B                       # the PyTorch weights, 3.8 GB
 .venv/bin/python parity.py out/d1_gpu_prompt_fp16.aimodel:gpu out/d1_ane_prompt_fp16.aimodel:ane   # optional: the parity table
 ```
 
-The questions are not baked into the export. `decide.py` builds the prompt for `QUESTIONS` when it starts, so after editing them the Core AI backends answer the new questions with the same models. The export is padded to fixed sizes: up to 640 tokens of prompt (the image is 220 of them; today's questions use 578), 16 answer positions (a choice takes 1, a box 5) and 1152 readout tokens. Questions that don't fit make the Core AI backends refuse with the sizes, and MLX still works. `export_gpu.py` / `export_ane.py` trace the function with the prompt from `coreai/questions.py`, which only sets the shapes. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
+The questions are not baked into the export. `decide.py` builds the prompt for the active questions when they are set (at start, `QUESTIONS`; then whatever the page asks), and the Core AI workers restart with it in a second or two, on the same models. The export is padded to fixed sizes: up to 640 tokens of prompt (the image is 220 of them; today's questions use 578), 16 answer positions (a choice takes 1, a box 5) and 1152 readout tokens. Questions that don't fit make the Core AI backends refuse with the sizes (the page disables them and says why), and MLX still works. `export_gpu.py` / `export_ane.py` trace the function with the prompt from `coreai/questions.py`, which only sets the shapes. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
 
 Measured on an M5 Max (macOS 27.3) with the same frame. Each decision is timed from the picture to the answers (preprocessing, model, readout), median of 30 after 5 warm-ups. Model time is measured inside the Swift worker:
 

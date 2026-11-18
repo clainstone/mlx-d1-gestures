@@ -67,6 +67,24 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 .gest-now small{display:block;font-family:var(--mono);font-size:.8em;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .gest-now b{display:block;font-family:var(--display);font-weight:500;font-size:clamp(1.1rem,1.6vw,1.6rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gest-bars{display:flex;flex-direction:column;font-size:.95em;line-height:1.3}
+#bars{display:flex;flex-direction:column;gap:10px}
+.qs{border:1px solid var(--line);border-radius:12px;padding:8px 14px}
+.qs summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qs summary b{font-weight:600}
+.qs-body{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.qs input,.qs select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.35em .6em;min-width:0}
+.qs input:focus,.qs select:focus{border-color:var(--muted);outline:none}
+.q{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid transparent;border-radius:10px;padding:8px}
+.q.err{border-color:#E5534B}
+.q-row{display:flex;gap:6px;align-items:center}
+.q-row input{flex:1}
+.q-row .k{flex:0 0 9em}
+.q-tools button,.q-opt button,.q-add{background:transparent;border:1px solid var(--line);border-radius:999px;padding:.1em .6em;cursor:pointer;color:var(--muted)}
+.q-tools button:hover,.q-opt button:hover,.q-add:hover{color:var(--ink);border-color:var(--muted)}
+.q-tools{white-space:nowrap}
+.q-opts{display:flex;flex-direction:column;gap:4px;padding-left:10px;border-left:2px solid var(--line)}
+#qerr{color:#E5534B}
+#budget .over{color:#E5534B}
 .gest-bars div{display:grid;grid-template-columns:9.5em 1fr 3em;gap:10px;align-items:center}
 .gest-bars i{height:10px;border-radius:4px;background:var(--surface2);overflow:hidden}
 .gest-bars i::before{content:"";display:block;height:100%;width:calc(var(--p,0)*100%);background:var(--muted);transition:width .15s linear}
@@ -82,8 +100,8 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
   <div class="gest">
     <div class="gest-left">
       <div class="gest-stage" id="stage">
-        <div class="gest-mirror"><video id="vid" muted playsinline></video><div class="gest-box" id="handBox" hidden><span></span></div><div class="gest-box face" id="faceBox" hidden><span></span></div></div>
-        <p id="idle">Press Start camera (or Load video), then make a gesture: thumbs up, thumbs down, OK, peace or victory, open palm, a fist. And try a smile.</p>
+        <div class="gest-mirror"><video id="vid" muted playsinline></video><div id="boxes"></div></div>
+        <p id="idle">Press Start camera (or Load video): d1 answers the questions on the right on every frame. With the default ones, make a gesture (thumbs up, OK, peace, open palm, a fist) and try a smile. Or ask your own under Questions.</p>
       </div>
       <div class="mon" id="machine">
         <div class="lg"><span><i style="background:var(--c-cpu)"></i>CPU</span><span><i style="background:var(--c-gpu)"></i>GPU</span><span><i style="background:var(--c-ane)"></i>Neural Engine</span><span>busy %</span><span><i style="background:#EEF1F4"></i>Mac power, W</span><span>whole Mac (mactop), last 60 s</span><button type="button" id="metrics" aria-pressed="true">Stop metrics</button></div>
@@ -92,9 +110,17 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
       </div>
     </div>
     <div class="gest-side">
-      <div class="gest-now"><button type="button" data-q="hand" aria-pressed="true" title="Hide or show the hand box and its decision"><small>Hand</small><b id="hand">—</b></button><button type="button" data-q="face" aria-pressed="true" title="Hide or show the face box and its decision"><small>Face</small><b id="face">—</b></button></div>
-      <div class="gest-bars" id="handBars"></div>
-      <div class="gest-bars" id="faceBars"></div>
+      <details class="qs" id="qs">
+        <summary><b>Questions</b><span class="hint" id="qsum"></span></summary>
+        <div class="qs-body">
+          <div class="ctl"><select id="preset" aria-label="Preset"></select><button type="button" class="q-add" id="addq">+ question</button><button type="button" class="q-add" id="share">copy link</button></div>
+          <div id="qlist"></div>
+          <div class="ctl"><button type="button" class="btn" id="apply">Ask these</button><span class="hint" id="qerr" role="status"></span></div>
+          <div class="hint" id="budget"></div>
+        </div>
+      </details>
+      <div class="gest-now" id="now"></div>
+      <div id="bars"></div>
       <div class="ctl"><div class="seg" id="be" role="radiogroup" aria-label="Backend"><button type="button" role="radio" data-b="mlx" aria-checked="true">MLX</button><button type="button" role="radio" data-b="coreai-gpu" aria-checked="false" disabled>Core AI GPU</button><button type="button" role="radio" data-b="coreai-ane" aria-checked="false" disabled>Core AI Neural Engine</button></div></div>
       <div class="facts"><span>ms per decision <b id="ms">—</b></span><span>input tokens <b id="in">—</b></span><span>tokens generated <b>0</b></span><span>decisions/s <b id="rate">—</b></span></div>
       <div class="ctl"><button type="button" id="go" class="btn">Start camera</button><button type="button" id="file" class="btn ghost">Load video</button><input type="file" id="pick" accept="video/*" hidden><a class="btn ghost" href="https://huggingface.co/LiquidAI/d1-2B" target="_blank" rel="noopener">d1-2B <span aria-hidden="true">↗</span></a><a class="btn ghost" href="https://github.com/Blaizzy/mlx-vlm" target="_blank" rel="noopener">mlx-vlm <span aria-hidden="true">↗</span></a><span class="hint" id="state">LiquidAI/d1-2B-MLX-8bit · mlx-vlm</span></div>
@@ -103,47 +129,203 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 </main>
 <script>
 const $ = s => document.querySelector(s);
-// Labels for the keys of QUESTIONS in decide.py: add a key there, add its label here.
-const HAND = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm', pointing:'☝️ Pointing', fist:'✊ Fist', none:'· No gesture'};
-const FACE = {smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
+// Display labels for known answer keys (the default questions' options); any other key shows as it is, humanised.
+const LABELS = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm',
+  pointing:'☝️ Pointing', fist:'✊ Fist', none:'· No gesture', smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
 const S = {on:false, stream:null, url:null, src:null, run:0, backend:'mlx'};
 const NAMES = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI Neural Engine'};
+const human = k => k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+const pct = p => Math.round(p * 100) + '%';
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 document.querySelectorAll('#be button').forEach(b=>b.onclick = ()=>{
   S.backend = b.dataset.b; document.querySelectorAll('#be button').forEach(x=>x.setAttribute('aria-checked', x===b));
   $('#ms').textContent = '—';
   if(S.on) $('#state').textContent = 'switching to '+NAMES[S.backend]+' (a Core AI worker starts on first use; the Neural Engine\'s very first start takes about a minute)';
 });
-fetch('/status').then(r=>r.json()).then(j=>{
-  Object.entries(j.backends||{}).forEach(([k,v])=>{
+function setBackends(backends){  // which backends can run the active questions; a disabled one in use falls back to MLX
+  Object.entries(backends||{}).forEach(([k,v])=>{
     const b = document.querySelector(`#be button[data-b="${k}"]`); if(!b) return;
     b.disabled = !v.available; b.title = v.available ? NAMES[k] : 'not available: '+v.reason;
   });
+  if(document.querySelector(`#be button[data-b="${S.backend}"]`).disabled) document.querySelector('#be button[data-b="mlx"]').click();
+}
+fetch('/status').then(r=>r.json()).then(j=>{
   if(j.machine === false){ MON.off = true; MON.note = 'Install mactop (brew install mactop) to see CPU, GPU and Neural Engine load here.'; draw(); }
 }).catch(()=>{});
-const bars = (el, labels) => { el.innerHTML = Object.entries(labels).map(([k,v])=>`<div data-k="${k}"><span>${v}</span><i></i><b>—</b></div>`).join(''); };
-bars($('#handBars'), HAND); bars($('#faceBars'), FACE);
-const OFF = {};  // tap Hand or Face to hide its box and its decision
-document.querySelectorAll('.gest-now button').forEach(b=>b.onclick = ()=>{
-  const q = b.dataset.q; OFF[q] = !OFF[q]; b.setAttribute('aria-pressed', !OFF[q]);
-  $('#'+q+'Bars').hidden = OFF[q]; if(OFF[q]){ $('#'+q+'Box').hidden = true; $('#'+q).textContent = 'off'; }
-});
 
-function box(el, q, ans, labels, off){  // q.box is in the camera frame's own 0..1 coordinates; the mirror flips it with the video
-  const b = q && q.box; el.hidden = off || !b || ans.choice==='none'; if(el.hidden) return;
-  Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%'});
-  el.classList.toggle('in', b.top < .08); el.firstChild.textContent = labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
+// ---- The answers: one tile per question (tap: hide it and its box), bars for its probabilities, boxes on the video.
+// A box question named X_box goes with the question X: one tile, the box labelled with X's answer (and hidden with it).
+const Q = {active:{}, off:{}};
+const PALETTE = ['var(--local)', 'var(--remote)', '#7BD88F', '#E06C9F', '#C792EA', '#E5C07B'];
+const isBox = q => q.type === 'box' || q.type === 'boxes';
+const owner = name => name.endsWith('_box') && Q.active[name.slice(0, -4)] && !isBox(Q.active[name.slice(0, -4)]) ? name.slice(0, -4) : name;
+function options(q){  // [[answer key, label]] of a question's bars
+  if(q.type === 'choice') return Object.keys(q.criteria).map(k => [k, LABELS[k] || human(k)]);
+  if(q.type === 'score') return q.criteria.map((t, i) => [String(i), t]);
+  if(q.type === 'noul') return [['yes', 'Yes']];
+  return [];
+}
+function layout(qs){  // build the tiles and bars for a set of questions
+  Q.active = qs; Q.off = {};
+  const names = Object.keys(qs);
+  $('#now').innerHTML = names.filter(n => owner(n) === n).map(n =>
+    `<button type="button" data-q="${esc(n)}" aria-pressed="true" title="Hide or show this answer and its box"><small>${esc(human(n))}</small><b>—</b></button>`).join('');
+  $('#bars').innerHTML = names.filter(n => options(qs[n]).length).map(n => `<div class="gest-bars" data-q="${esc(n)}">` +
+    options(qs[n]).map(([k, t]) => `<div data-k="${esc(k)}"><span>${esc(t)}</span><i></i><b>—</b></div>`).join('') + '</div>').join('');
+  document.querySelectorAll('#now button').forEach(b => b.onclick = () => {
+    const n = b.dataset.q; Q.off[n] = !Q.off[n]; b.setAttribute('aria-pressed', !Q.off[n]);
+    const bars = document.querySelector(`#bars [data-q="${CSS.escape(n)}"]`); if(bars) bars.hidden = Q.off[n];
+    if(Q.off[n]){ b.querySelector('b').textContent = 'off'; hideBoxes(); }
+  });
+  hideBoxes(); $('#qsum').textContent = names.map(human).join(' · ');
+}
+function said(q, a){  // a tile's one-line answer
+  if(!a) return '—';
+  if(a.type === 'choice') return a.choice === 'none' ? '—' : (LABELS[a.choice] || human(a.choice)) + ' ' + pct(a.confidence);
+  if(a.type === 'score') return (q.criteria[Math.round(a.score)] ?? a.score) + ' ' + pct(a.confidence);
+  if(a.type === 'noul') return a.noul >= .5 ? 'Yes ' + pct(a.noul) : 'No ' + pct(1 - a.noul);
+  if(a.type === 'number'){ const f = v => +v.toFixed(2), [lo, hi] = (a.interval || []).map(f);
+    return f(a.number) + (a.unit ? ' ' + a.unit : '') + (lo != null && lo !== hi ? ` (${lo}–${hi})` : ''); }
+  if(a.type === 'box') return a.box ? 'Found ' + pct(a.confidence) : 'Not found';
+  if(a.type === 'boxes') return a.count + (a.at_least ? '+' : '') + ' found';
+  return '—';
+}
+const hideBoxes = () => document.querySelectorAll('.gest-box').forEach(b => b.hidden = true);
+function boxEl(i){  // the i-th box on the video, made on first use
+  const all = document.querySelectorAll('#boxes .gest-box');
+  if(all[i]) return all[i];
+  const el = document.createElement('div'); el.className = 'gest-box'; el.innerHTML = '<span></span>'; $('#boxes').append(el); return el;
 }
 function show(a, ms, tokens){
-  [['hand', $('#handBars'), HAND, '#hand'], ['face', $('#faceBars'), FACE, '#face']].forEach(([q, el, labels, now])=>{
-    if(OFF[q]) return;
-    const ans = a[q], p = ans.probabilities || {};
-    el.querySelectorAll('div').forEach(row=>{ const v = p[row.dataset.k] || 0; row.querySelector('i').style.setProperty('--p', v);
-      row.querySelector('b').textContent = Math.round(v*100)+'%'; row.classList.toggle('top', row.dataset.k===ans.choice); });
-    $(now).textContent = ans.choice==='none' ? '—' : labels[ans.choice]+' '+Math.round(ans.confidence*100)+'%';
+  Object.entries(Q.active).forEach(([n, q]) => {
+    const o = owner(n), tile = document.querySelector(`#now [data-q="${CSS.escape(o)}"] b`);
+    if(Q.off[o]) return;
+    if(o === n && tile) tile.textContent = said(q, a[n]);
+    const bars = document.querySelector(`#bars [data-q="${CSS.escape(n)}"]`);
+    if(bars && a[n]){
+      const p = a[n].type === 'noul' ? {yes: a[n].noul} : a[n].probabilities || {}, top = a[n].type === 'choice' ? a[n].choice : a[n].type === 'score' ? String(Math.round(a[n].score)) : null;
+      bars.querySelectorAll('[data-k]').forEach(row => { const v = p[row.dataset.k] || 0; row.querySelector('i').style.setProperty('--p', v);
+        row.querySelector('b').textContent = pct(v); row.classList.toggle('top', row.dataset.k === top || (a[n].type === 'noul' && v >= .5)); });
+    }
   });
-  box($('#handBox'), a.hand_box, a.hand, HAND, OFF.hand); box($('#faceBox'), a.face_box, a.face, FACE, OFF.face);
+  let k = 0;  // the boxes, in question order, each box question its own colour
+  Object.entries(Q.active).filter(([, q]) => isBox(q)).forEach(([n, q], qi) => {
+    const o = owner(n), ans = a[n]; if(!ans || Q.off[o]) return;
+    if(o !== n && a[o] && a[o].type === 'choice' && a[o].choice === 'none') return;  // "no gesture": no box for it
+    const found = ans.type === 'boxes' ? ans.boxes : ans.box ? [ans] : [];
+    found.forEach(f => {
+      const el = boxEl(k++), b = f.box, c = PALETTE[qi % PALETTE.length];
+      Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%', borderColor:c});
+      el.classList.toggle('in', b.top < .08); el.firstChild.style.background = c;
+      el.firstChild.textContent = o !== n && a[o] ? said(Q.active[o], a[o]) : human(n) + ' ' + pct(f.confidence);
+      el.hidden = false;
+    });
+  });
+  document.querySelectorAll('#boxes .gest-box').forEach((el, i) => { if(i >= k) el.hidden = true; });
   $('#ms').textContent = Math.round(ms); $('#in').textContent = tokens;
 }
+
+// ---- The questions editor: presets, a form per question, "Ask these" sets them on the server (POST /questions),
+// kept in this browser and shareable as a link (#q=...).
+const TYPES = [['noul','Yes / No'], ['choice','Choice'], ['score','Score (levels)'], ['number','Number / count'], ['box','Box'], ['boxes','Boxes (several)']];
+const PRESETS = {
+  'Gestures & face': null,  // the server's default, filled in from GET /questions
+  'People & objects': {person:{type:'noul', instructions:'Is there a person in the picture?'},
+    light:{type:'score', instructions:'How bright is the room?', criteria:['Dark', 'Dim', 'Bright']},
+    phone_box:{type:'box', instructions:'Where is the phone?'}},
+  'Counting': {free_tables:{type:'number', instructions:'How many free tables are in the image?', range:[0, 20], step:1},
+    people:{type:'number', instructions:'How many people are in the image?', range:[0, 20], step:1},
+    people_boxes:{type:'boxes', instructions:'Where are the people?', max:2}},
+  'At the desk': {looking:{type:'choice', instructions:'Where is the person looking?', criteria:{screen:'At the screen or the camera', away:'Away, to the side', down:'Down, at a phone or the desk'}},
+    posture:{type:'choice', instructions:'How is the person sitting?', criteria:{upright:'Sitting upright', slouching:'Slouching or hunched', leaning:'Leaning on a hand or the desk'}},
+    eyes_closed:{type:'noul', instructions:"Are the person's eyes closed?"},
+    face_box:{type:'box', instructions:"Where is the person's face?"}},
+};
+let EDIT = [];  // the form: [{name, type, instructions, opts: [[key, text]] (choice) or [[text]] (score), low, high, step (number), max (boxes)}]
+const fromQ = qs => Object.entries(qs).map(([name, q]) => ({name, type:q.type, instructions:q.instructions || '',
+  opts: q.type === 'choice' ? Object.entries(q.criteria) : q.type === 'score' ? q.criteria.map(t => [t]) : [],
+  low: q.range ? q.range[0] : 0, high: q.range ? q.range[1] : 20, step: q.step ?? 1, max: q.max ?? 3}));
+const toQ = () => Object.fromEntries(EDIT.map(e => [e.name.trim(), {type:e.type, instructions:e.instructions.trim(),
+  ...(e.type === 'choice' ? {criteria:Object.fromEntries(e.opts.map(([k, t]) => [k.trim(), t.trim()]))} : {}),
+  ...(e.type === 'score' ? {criteria:e.opts.map(([t]) => t.trim())} : {}),
+  ...(e.type === 'number' ? {range:[+e.low, +e.high], step:+e.step} : {}),
+  ...(e.type === 'boxes' ? {max:+e.max} : {})}]));
+function editor(){
+  $('#qlist').innerHTML = EDIT.map((e, i) => `<div class="q" data-i="${i}">
+    <div class="q-row"><input class="k" data-f="name" value="${esc(e.name)}" aria-label="Name" placeholder="name">
+      <select data-f="type" aria-label="Type">${TYPES.map(([t, l]) => `<option value="${t}"${t === e.type ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      <span class="q-tools"><button type="button" data-a="up" aria-label="Move up">↑</button> <button type="button" data-a="down" aria-label="Move down">↓</button> <button type="button" data-a="del" aria-label="Remove">✕</button></span></div>
+    <div class="q-row"><input data-f="instructions" value="${esc(e.instructions)}" aria-label="Question" placeholder="the question, e.g. Is the person wearing glasses?"></div>
+    ${e.type === 'choice' || e.type === 'score' ? `<div class="q-opts">${e.opts.map((o, j) => `<div class="q-row q-opt" data-j="${j}">${e.type === 'choice'
+      ? `<input class="k" data-o="0" value="${esc(o[0])}" aria-label="Option key" placeholder="key"><input data-o="1" value="${esc(o[1])}" aria-label="Option description" placeholder="what it looks like">`
+      : `<input data-o="0" value="${esc(o[0])}" aria-label="Level ${j + 1}" placeholder="level ${j + 1}">`}<button type="button" data-a="delopt" aria-label="Remove">✕</button></div>`).join('')}
+      <div><button type="button" class="q-add" data-a="addopt">+ ${e.type === 'choice' ? 'option' : 'level'}</button></div></div>` : ''}
+    ${e.type === 'number' ? `<div class="q-row hint">from <input type="number" data-f="low" value="${esc(e.low)}" aria-label="From"> to <input type="number" data-f="high" value="${esc(e.high)}" aria-label="To"> step <input type="number" data-f="step" value="${esc(e.step)}" min="0" aria-label="Step"></div>` : ''}
+    ${e.type === 'boxes' ? `<div class="q-row hint">at most <input type="number" data-f="max" value="${esc(e.max)}" min="1" max="16" aria-label="At most"> (5 Core AI answer slots each)</div>` : ''}
+  </div>`).join('');
+}
+$('#qlist').oninput = e => {  // typing edits EDIT in place (no re-render: the focus stays)
+  const q = e.target.closest('.q'); if(!q) return; const x = EDIT[q.dataset.i];
+  if(e.target.dataset.f === 'type'){ x.type = e.target.value; if(x.type === 'choice' && !x.opts.length) x.opts = [['', ''], ['', '']];
+    if(x.type === 'score'){ x.opts = x.opts.length ? x.opts.map(o => [o.at(-1)]) : [['Low'], ['High']]; } if(x.type === 'choice') x.opts = x.opts.map(o => o.length > 1 ? o : [o[0].toLowerCase().replace(/\W+/g, '_'), o[0]]); editor(); }
+  else if(e.target.dataset.f) x[e.target.dataset.f] = e.target.value;
+  else if(e.target.dataset.o) x.opts[e.target.closest('.q-opt').dataset.j][e.target.dataset.o] = e.target.value;
+  custom();
+};
+$('#qlist').onclick = e => {
+  const a = e.target.dataset.a; if(!a) return; const i = +e.target.closest('.q').dataset.i, x = EDIT[i];
+  if(a === 'del') EDIT.splice(i, 1);
+  if(a === 'up' && i > 0) EDIT.splice(i - 1, 0, EDIT.splice(i, 1)[0]);
+  if(a === 'down' && i < EDIT.length - 1) EDIT.splice(i + 1, 0, EDIT.splice(i, 1)[0]);
+  if(a === 'addopt') x.opts.push(x.type === 'choice' ? ['', ''] : ['']);
+  if(a === 'delopt') x.opts.splice(+e.target.closest('.q-opt').dataset.j, 1);
+  editor(); custom();
+};
+$('#addq').onclick = () => { EDIT.push({name:'question_' + (EDIT.length + 1), type:'noul', instructions:'', opts:[], low:0, high:20, step:1, max:3}); editor(); custom(); };
+const custom = () => { $('#preset').value = 'Custom'; };
+$('#preset').onchange = () => { const p = PRESETS[$('#preset').value]; if(p){ EDIT = fromQ(p); editor(); } };
+const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
+$('#share').onclick = async () => {
+  const url = location.origin + location.pathname + '#q=' + b64(JSON.stringify(toQ()));
+  try{ await navigator.clipboard.writeText(url); $('#qerr').textContent = 'link copied'; }catch(e){ $('#qerr').textContent = url; }
+};
+function budget(b){  // the active questions against the Core AI export's sizes
+  if(!b){ $('#budget').textContent = ''; return; }
+  const part = (n, max, what) => `<span class="${n > max ? 'over' : ''}">${n} / ${max} ${what}</span>`;
+  $('#budget').innerHTML = 'Core AI: ' + part(b.tokens, b.limits.tokens, 'prompt tokens') + ' · ' + part(b.slots, b.limits.slots, 'answer slots') + ' · ' +
+    part(b.readout, b.limits.readout, 'answer tokens') + (b.problem ? ' · <span class="over">too big for Core AI: MLX only</span>' : '');
+}
+function apply(j){  // the server's answer to GET or POST /questions
+  layout(j.questions); budget(j.budget); setBackends(j.backends);
+  const name = Object.keys(PRESETS).find(k => JSON.stringify(PRESETS[k]) === JSON.stringify(j.questions));
+  $('#preset').value = name || 'Custom';
+}
+async function ask(qs){  // set the questions on the server; returns false (and says why) if it refuses them
+  $('#qerr').textContent = 'setting…'; document.querySelectorAll('.q.err').forEach(q => q.classList.remove('err'));
+  try{
+    const r = await fetch('/questions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({questions:qs})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    apply(j); localStorage.setItem('d1-questions', JSON.stringify(qs)); $('#qerr').textContent = ''; return true;
+  }catch(e){
+    $('#qerr').textContent = e.message;
+    const m = /question '([^']+)'/.exec(e.message), i = m ? EDIT.findIndex(x => x.name.trim() === m[1]) : -1;
+    if(i >= 0) document.querySelector(`.q[data-i="${i}"]`).classList.add('err');
+    return false;
+  }
+}
+$('#apply').onclick = () => ask(toQ());
+fetch('/questions').then(r => r.json()).then(async j => {  // the link's questions, else this browser's last, else the server's
+  PRESETS['Gestures & face'] = j.default;
+  $('#preset').innerHTML = [...Object.keys(PRESETS), 'Custom'].map(k => `<option>${k}</option>`).join('');
+  let want = null;
+  try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : JSON.parse(localStorage.getItem('d1-questions')); }catch(e){}
+  EDIT = fromQ(want || j.questions); editor();
+  if(want && JSON.stringify(want) !== JSON.stringify(j.questions)){ if(!(await ask(want))){ apply(j); $('#qs').open = true; } }
+  else apply(j);
+}).catch(() => { layout({}); $('#qsum').textContent = 'd1 is not answering (uv run decide.py)'; });
+
 async function loop(run){  // one frame in flight at a time: the next one leaves when the answer comes back
   const v = $('#vid'), c = document.createElement('canvas');
   let n = 0, t1 = performance.now();
@@ -250,7 +432,7 @@ function stop(){  // one stop for both sources: the camera or a local video file
   if(S.stream) S.stream.getTracks().forEach(t=>t.stop()); S.stream = null;
   const v = $('#vid'); v.pause(); v.srcObject = null; v.removeAttribute('src'); v.load();
   if(S.url) URL.revokeObjectURL(S.url); S.url = null; S.src = null;
-  $('#handBox').hidden = $('#faceBox').hidden = true; $('#idle').hidden = false; S.ar = 16/9; fit();
+  hideBoxes(); $('#idle').hidden = false; S.ar = 16/9; fit();
   $('#go').textContent = 'Start camera'; $('#file').textContent = 'Load video';
 }
 async function start(src){  // src: 'camera' or a File; plays it in #vid and starts the decision loop
