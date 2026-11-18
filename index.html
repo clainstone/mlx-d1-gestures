@@ -113,10 +113,11 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
       <details class="qs" id="qs">
         <summary><b>Questions</b><span class="hint" id="qsum"></span></summary>
         <div class="qs-body">
-          <div class="ctl"><select id="preset" aria-label="Preset"></select><button type="button" class="q-add" id="addq">+ question</button><button type="button" class="q-add" id="share">copy link</button></div>
+          <div class="ctl"><select id="preset" aria-label="Preset"></select><button type="button" class="q-add" id="addq">+ question</button><button type="button" class="q-add" id="save">save as…</button><button type="button" class="q-add" id="forget" hidden>delete</button><button type="button" class="q-add" id="share">copy link</button></div>
           <div id="qlist"></div>
           <div class="ctl"><button type="button" class="btn" id="apply">Ask these</button><span class="hint" id="qcost"></span><span class="hint" id="qerr" role="status"></span></div>
           <div class="hint" id="budget"></div>
+          <label class="hint">Show a box, and count it, from <input type="number" id="minp" min="50" max="99" step="5" style="width:4em" aria-label="Minimum confidence, percent"> % sure it is there</label>
         </div>
       </details>
       <div class="gest-now" id="now"></div>
@@ -186,10 +187,16 @@ function said(q, a){  // a tile's one-line answer
   if(a.type === 'noul') return a.noul >= .5 ? 'Yes ' + pct(a.noul) : 'No ' + pct(1 - a.noul);
   if(a.type === 'number'){ const f = v => +v.toFixed(2), [lo, hi] = (a.interval || []).map(f);
     return f(a.number) + (a.unit ? ' ' + a.unit : '') + (lo != null && lo !== hi ? ` (${lo}–${hi})` : ''); }
-  if(a.type === 'box') return a.box ? 'Found ' + pct(a.confidence) : 'Not found';
-  if(a.type === 'boxes') return a.count + (a.at_least ? '+' : '') + ' found';
+  if(a.type === 'box') return seen(a).length ? 'Found ' + pct(a.found) : 'Not found';
+  if(a.type === 'boxes'){ const n = seen(a).length; return n + (n && n === a.presence.length ? '+' : '') + ' found'; }
   return '—';
 }
+// The boxes d1 is at least MIN.p sure are there (its `found`; d1 itself keeps those at 0.5 or more): drawn and counted.
+const MIN = {p: Math.min(.99, Math.max(.5, +(localStorage.getItem('d1-min') || 70) / 100))};
+const seen = a => a.type === 'boxes' ? a.boxes.filter(f => f.found >= MIN.p) : a.box && a.found >= MIN.p ? [a] : [];
+$('#minp').value = Math.round(MIN.p * 100);
+$('#minp').onchange = e => { MIN.p = Math.min(.99, Math.max(.5, (+e.target.value || 70) / 100)); e.target.value = Math.round(MIN.p * 100);
+  localStorage.setItem('d1-min', Math.round(MIN.p * 100)); };
 const hideBoxes = () => document.querySelectorAll('.gest-box').forEach(b => b.hidden = true);
 function boxEl(i){  // the i-th box on the video, made on first use
   const all = document.querySelectorAll('#boxes .gest-box');
@@ -212,7 +219,7 @@ function show(a, ms, tokens){
   Object.entries(Q.active).filter(([, q]) => isBox(q)).forEach(([n, q], qi) => {
     const o = owner(n), ans = a[n]; if(!ans || Q.off[o]) return;
     if(o !== n && a[o] && a[o].type === 'choice' && a[o].choice === 'none') return;  // "no gesture": no box for it
-    const found = ans.type === 'boxes' ? ans.boxes : ans.box ? [ans] : [];
+    const found = seen(ans);
     found.forEach(f => {
       const el = boxEl(k++), b = f.box, c = PALETTE[qi % PALETTE.length];
       Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%', borderColor:c});
@@ -289,8 +296,32 @@ $('#qlist').onclick = e => {
   editor(); custom();
 };
 $('#addq').onclick = () => { EDIT.push({name:'question_' + (EDIT.length + 1), type:'noul', instructions:'', opts:[], low:0, high:20, step:1, max:3}); editor(); custom(); };
-const custom = () => { $('#preset').value = 'Custom'; };
-$('#preset').onchange = () => { const p = PRESETS[$('#preset').value]; if(p){ EDIT = fromQ(p); editor(); } };
+// Your own set is kept (in this browser) while you look at the presets: picking Custom brings it back.
+const custom = () => { $('#preset').value = 'Custom'; localStorage.setItem('d1-custom', JSON.stringify(EDIT)); };
+// Sets you save by name (this browser's localStorage), listed under "Saved" in the menu as "mine:<name>".
+const SAVED = JSON.parse(localStorage.getItem('d1-presets') || '{}');
+let LAST = '';  // the saved set last picked: save as… offers its name, to update it after edits
+const preset = k => k.startsWith('mine:') ? SAVED[k.slice(5)] : PRESETS[k];
+function presets(pick){  // fill the menu, pick one
+  const o = k => `<option value="${esc(k)}">${esc(k.replace(/^mine:/, ''))}</option>`;
+  $('#preset').innerHTML = Object.keys(PRESETS).map(o).join('') +
+    (Object.keys(SAVED).length ? `<optgroup label="Saved">${Object.keys(SAVED).map(k => o('mine:' + k)).join('')}</optgroup>` : '') + o('Custom');
+  $('#preset').value = pick; $('#forget').hidden = !pick.startsWith('mine:'); if(pick.startsWith('mine:')) LAST = pick.slice(5);
+}
+$('#preset').onchange = () => {
+  const k = $('#preset').value, p = preset(k), mine = k === 'Custom' && JSON.parse(localStorage.getItem('d1-custom') || 'null');
+  $('#forget').hidden = !k.startsWith('mine:'); if(k.startsWith('mine:')) LAST = k.slice(5);
+  if(p || mine){ EDIT = p ? fromQ(p) : mine; editor(); }
+};
+$('#save').onclick = () => {
+  const cur = $('#preset').value, name = prompt('Save these questions as:', cur.startsWith('mine:') ? cur.slice(5) : LAST)?.trim();
+  if(!name) return;
+  SAVED[name] = toQ(); localStorage.setItem('d1-presets', JSON.stringify(SAVED)); presets('mine:' + name);
+};
+$('#forget').onclick = () => {
+  const k = $('#preset').value.slice(5); if(!confirm(`Delete the saved set "${k}"?`)) return;
+  delete SAVED[k]; localStorage.setItem('d1-presets', JSON.stringify(SAVED)); presets('Custom'); custom();
+};
 const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
 $('#share').onclick = async () => {
@@ -305,8 +336,10 @@ function budget(b){  // the active questions against the Core AI export's sizes
 }
 function apply(j){  // the server's answer to GET or POST /questions
   layout(j.questions); budget(j.budget); setBackends(j.backends);
-  const name = Object.keys(PRESETS).find(k => JSON.stringify(PRESETS[k]) === JSON.stringify(j.questions));
-  $('#preset').value = name || 'Custom';
+  const same = q => JSON.stringify(q) === JSON.stringify(j.questions);
+  const name = Object.keys(PRESETS).find(k => same(PRESETS[k])) || Object.keys(SAVED).map(k => 'mine:' + k).find(k => same(preset(k)));
+  presets(name || 'Custom');
+  if(!name) custom();  // a set of your own, asked: the one Custom brings back
 }
 async function ask(qs){  // set the questions on the server; returns false (and says why) if it refuses them
   $('#qerr').textContent = 'setting…'; document.querySelectorAll('.q.err').forEach(q => q.classList.remove('err'));
@@ -325,7 +358,7 @@ async function ask(qs){  // set the questions on the server; returns false (and 
 $('#apply').onclick = () => ask(toQ());
 fetch('/questions').then(r => r.json()).then(async j => {  // the link's questions, else this browser's last, else the server's
   PRESETS['Gestures & face'] = j.default;
-  $('#preset').innerHTML = [...Object.keys(PRESETS), 'Custom'].map(k => `<option>${k}</option>`).join('');
+  presets('Custom');
   let want = null;
   try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : JSON.parse(localStorage.getItem('d1-questions')); }catch(e){}
   EDIT = fromQ(want || j.questions); editor();

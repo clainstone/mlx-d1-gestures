@@ -10,6 +10,8 @@ struct D1GesturesApp: App {
     }
 }
 
+let minFound = 0.7  // a box is drawn when d1 is at least this sure the hand / face is there (as the page's default)
+
 // The labels for the keys of QUESTIONS (decide.py, coreai/questions.py), as on the web page.
 let HAND = ["thumbs_up": "👍 Thumbs up", "thumbs_down": "👎 Thumbs down", "ok": "👌 OK", "peace": "✌️ Peace / Victory",
             "open_palm": "✋ Open palm", "pointing": "☝️ Pointing", "fist": "✊ Fist", "none": "· No gesture"]
@@ -173,7 +175,7 @@ struct Stage: View {
     @ViewBuilder func boxes(_ s: CGSize) -> some View {
         if let a = live.decision?.answers {
             ForEach([("hand_box", "hand", HAND, Color.orange), ("face_box", "face", FACE, Color.teal)], id: \.0) { key, q, labels, color in
-                if !live.off.contains(q), let b = a.boxes[key]?.box, let c = a.choices[q], c.choice != "none" {
+                if !live.off.contains(q), let x = a.boxes[key], x.found >= minFound, let b = x.box, let c = a.choices[q], c.choice != "none" {
                     let u = Frame.uncrop(b, Int(live.size.width), Int(live.size.height))
                     let r = CGRect(x: u.left * s.width, y: u.top * s.height, width: (u.right - u.left) * s.width, height: (u.bottom - u.top) * s.height)
                     RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: 3)
