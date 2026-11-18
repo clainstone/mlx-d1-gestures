@@ -33,9 +33,7 @@ public actor D1 {
         }
         var fs: [InferenceFunction] = []
         for p in parts {
-            let m = try await AIModel.specialize(contentsOf: p, options: options, cache: .default, cachePolicy: .default)
-            guard let f = try m.loadFunction(named: "main") else { throw D1Error("\(p.lastPathComponent) has no main function") }
-            fs.append(f)
+            fs.append(try await D1.function(p, options))
         }
         fns = fs
         input = NDArray(shape: [1, 3, layout.height, layout.width], scalarType: .float32)
@@ -48,7 +46,27 @@ public actor D1 {
             v.withUnsafeMutablePointer { ptr, _, _ in data.withUnsafeBytes { src in _ = memcpy(ptr, src.baseAddress!, data.count) } }
             prompt[name] = a
         }
-        _ = try await logits()  // the first run pays the lazy set-up
+        do { _ = try await logits() } catch {  // the first run pays the lazy set-up
+            if D1.timing { print("d1 first run failed: \(String(reflecting: error))") }
+            throw D1Error("the first run failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// One piece's "main", specialised. A cached compile can go bad (iOS purges caches under storage pressure, which can
+    /// leave an entry that no longer loads: a nil error from loadFunction); then its entry is deleted and it is compiled again, once.
+    static func function(_ p: URL, _ options: SpecializationOptions) async throws -> InferenceFunction {
+        for attempt in 0..<2 {
+            do {
+                let m = try await AIModel.specialize(contentsOf: p, options: options, cache: .default, cachePolicy: .default)
+                guard let f = try m.loadFunction(named: "main") else { throw D1Error("\(p.lastPathComponent) has no main function") }
+                return f
+            } catch let e as D1Error { throw e } catch {
+                if D1.timing { print("d1 \(p.lastPathComponent) attempt \(attempt) failed: \(String(reflecting: error))") }
+                if attempt == 1 { throw D1Error("could not load \(p.lastPathComponent): \(error.localizedDescription)") }
+                try? AIModelCache.default.deleteEntries(for: p)
+            }
+        }
+        fatalError("unreachable")
     }
 
     /// D1_TIMING=1 in the environment: a per-stage breakdown on stdout every 30 decisions.

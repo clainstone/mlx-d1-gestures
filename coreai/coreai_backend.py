@@ -15,7 +15,7 @@ The models come from https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI
 first download); D1_COREAI_DIR=/path/to/folder with d1_gpu_prompt_fp16.aimodel / d1_ane_prompt_fp16.aimodel (and
 embed_tokens_fp16.npy, else coreai/out's or the repo's) uses your own export instead.
 """
-import json, os, subprocess, tempfile, time
+import json, os, shutil, subprocess, tempfile, time
 import numpy as np
 from d1_common import S_MAX, build_meta, embeddings, frame, pixels, prompt_inputs, prompt_problem, readout, uncrop_box
 
@@ -106,6 +106,17 @@ class CoreAI:
                 json.dump({k: list(v.shape) for k, v in arrays.items()}, f)
             self.prompt_dir = d
         return self.prompt_dir
+
+    def close(self):
+        """Stop the workers and drop the prompt files (the questions changed: a new CoreAI takes over)."""
+        for w in self.workers.values():
+            w.p.kill()
+            w.p.wait()
+            os.unlink(w.pix)
+        self.workers = {}
+        if self.prompt_dir:
+            shutil.rmtree(self.prompt_dir, ignore_errors=True)
+            self.prompt_dir = None
 
     def decide(self, name, img):
         w = self.workers[name]

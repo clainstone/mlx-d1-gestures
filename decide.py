@@ -11,6 +11,8 @@ GET  /       -> index.html, the webcam page
 POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ..., "backend": ...}
              ?backend=mlx (default) | coreai-gpu | coreai-ane: the same model on Core AI, GPU or Neural Engine
              (optional: needs the artefacts and worker built under coreai/, see the README)
+GET  /questions -> {"questions": the active set, "default": QUESTIONS, "budget": its Core AI size, "backends": ...}
+POST /questions  body {"questions": {...}} -> the same, now asking these (400 with the reason if they are not valid)
 GET  /status -> {"model": ..., "ready": true, "backends": {name: {"available": bool, "reason": ...}}, "machine": mactop installed}
 GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}: the Mac's CPU, GPU and Neural Engine load and power, from
              mactop (brew install mactop), started by the first request and stopped ~5 s after the last one
@@ -27,7 +29,9 @@ PORT = int(os.environ.get("DECIDE_PORT", 8049))
 MAX_FRAME = 4 * 1024 * 1024
 PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
-# Edit these to ask d1 something else: a "choice" answers with one key of "criteria", a "box" with where it is.
+# The default questions (the page can ask others, POST /questions): a "choice" answers with one key of "criteria", a
+# "box" with where it is; also "noul" (yes/no), "score" (levels, lowest first), "number" (a count or an amount in a
+# "range", e.g. [0, 20] with "step": 1) and "boxes" (every one, up to "max": where and how many).
 QUESTIONS = {
     "hand": {"type": "choice", "instructions": "What gesture is the person making with their hand?",
              "criteria": {"thumbs_up": "A fist with the thumb pointing up",
@@ -47,13 +51,17 @@ QUESTIONS = {
     "face_box": {"type": "box", "instructions": "Where is the person's face?"},
 }
 
+TYPES = ("noul", "choice", "score", "number", "box", "boxes")  # what d1 answers about a picture (text and date read a text state)
+MAX_QUESTIONS, MAX_BODY = 12, 16 * 1024
+questions = QUESTIONS  # the active set
+
 print("loading %s (the first run downloads 2.2 GB)..." % MODEL, flush=True)
 model, _ = load(MODEL)
 
 
 def decide(img):
     t = time.perf_counter()
-    out = model.system_one(None, QUESTIONS, media=[img])
+    out = model.system_one(None, questions, media=[img])
     out["ms"] = round((time.perf_counter() - t) * 1000, 1)
     return out
 
@@ -62,10 +70,54 @@ def decide(img):
 try:
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "coreai"))
     from coreai_backend import CoreAI, Unavailable
+    from d1_common import IMAGE_LEN, S_MAX, T_MAX, U_MAX
     coreai = CoreAI(model, QUESTIONS)
 except Exception as e:
-    coreai, Unavailable = None, RuntimeError
+    coreai, CoreAI, Unavailable = None, None, RuntimeError
     coreai_error = "Core AI backends not loaded: %s" % e
+
+
+def check(q):
+    """Raises ValueError, saying why, unless q is a set of questions d1 can answer about a picture."""
+    if not isinstance(q, dict) or not 0 < len(q) <= MAX_QUESTIONS:
+        raise ValueError("questions are {name: question}, 1 to %d of them" % MAX_QUESTIONS)
+    for k, v in q.items():
+        if not isinstance(v, dict) or v.get("type") not in TYPES:
+            raise ValueError("question %r: \"type\" is one of %s" % (k, ", ".join(TYPES)))
+        c, filled = v.get("criteria"), lambda *xs: all(isinstance(x, str) and x.strip() for x in xs)
+        if not filled(k, v.get("instructions")):
+            raise ValueError("question %r: needs a name and the question itself" % k)
+        if v["type"] == "choice" and not (isinstance(c, dict) and len(c) >= 2 and filled(*c, *c.values())):
+            raise ValueError("question %r: a choice needs at least 2 options, each with a key and what it looks like" % k)
+        if v["type"] == "number" and "range" not in v:  # without a range, a number is read out of a text state
+            raise ValueError('question %r: a number needs its "range": {"type": "number", "range": [0, 20], "step": 1}' % k)
+        if v["type"] == "score" and not (isinstance(c, list) and filled(*c)):
+            raise ValueError("question %r: a score needs its levels, lowest first, none empty" % k)
+    model.engine.named(q)  # mlx-vlm's own check, which explains the schema
+
+
+def set_questions(q):
+    global questions, coreai
+    check(q)
+    new = CoreAI(model, q) if CoreAI else None  # the prompt for q, and whether it fits the Core AI export
+    if coreai:
+        coreai.close()  # its workers hold the old prompt; the next Core AI frame starts one with the new
+    questions, coreai = q, new
+    decide(Image.new("RGB", (640, 480), "gray"))  # warm-up for the new prompt
+
+
+def budget():
+    """The active questions against the Core AI export's sizes (text tokens without the image, answer slots, readout
+    tokens), or None without Core AI."""
+    if not coreai:
+        return None
+    m = coreai.meta
+    return {"tokens": len(m["ids"]) - IMAGE_LEN, "slots": len(m["slots"]), "readout": len(m["union"]),
+            "limits": {"tokens": T_MAX - IMAGE_LEN, "slots": S_MAX, "readout": U_MAX}, "problem": coreai.problem}
+
+
+def asking():
+    return {"questions": questions, "default": QUESTIONS, "budget": budget(), "backends": backends()}
 
 
 def backends():
@@ -144,12 +196,28 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
             return self._send(200, open(PAGE, "rb").read(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
         if self.path == "/machine":
             return self._json(200, machine())
+        if self.path == "/questions":
+            return self._json(200, asking())
         if self.path == "/status":
             return self._json(200, {"model": MODEL, "ready": True, "backends": backends(), "machine": shutil.which("mactop") is not None})
         self._json(404, {"error": "unknown path"})
 
     def do_POST(self):
         url = urllib.parse.urlsplit(self.path)
+        if url.path == "/questions":
+            n = int(self.headers.get("Content-Length") or 0)
+            if not 0 < n <= MAX_BODY:
+                return self._json(413, {"error": "send {\"questions\": {...}}, up to %d KB" % (MAX_BODY // 1024)})
+            try:
+                body = json.loads(self.rfile.read(n))
+                if not isinstance(body, dict) or "questions" not in body:
+                    raise ValueError('send {"questions": {name: question}}')
+                set_questions(body["questions"])
+            except (ValueError, TypeError) as e:  # json.JSONDecodeError is a ValueError
+                return self._json(400, {"error": str(e)})
+            except Exception as e:
+                return self._json(500, {"error": "could not set the questions: %s" % e})
+            return self._json(200, asking())
         if url.path != "/run":
             return self._json(404, {"error": "unknown path"})
         backend = urllib.parse.parse_qs(url.query).get("backend", ["mlx"])[0]
