@@ -1,0 +1,867 @@
+{
+  "hardware": "Mac16,1 with Apple M4, macOS 27.0.1",
+  "dataset": "https://www.projects.science.uu.nl/shakefive/",
+  "method": "30 individual gestures from 15 rounds in ShakeFive2. One manually labeled reveal frame per player, cropped to the chosen hand, resized to 640x360 and encoded as JPEG. Crop is [left, top, right, bottom] in original pixels. Five warm-up frames per backend. The server records preprocessing and D1 inference.",
+  "summary": {
+    "coreai-ane": {
+      "input_width": 640,
+      "box_at_70_percent": 30,
+      "median_ms": 354.8,
+      "p90_ms": 375.4,
+      "wins": 29,
+      "draws": 1,
+      "losses": 0
+    },
+    "mlx": {
+      "input_width": 640,
+      "box_at_70_percent": 30,
+      "median_ms": 1018.4,
+      "p90_ms": 1054.9,
+      "wins": 29,
+      "draws": 1,
+      "losses": 0
+    }
+  },
+  "throws": [
+    {
+      "video": "Video-17112014-013715.mp4",
+      "second": 4.565,
+      "crop": [
+        543,
+        395,
+        655,
+        458
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 349.3
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 971.9
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-013715.mp4",
+      "second": 4.565,
+      "crop": [
+        602,
+        359,
+        714,
+        422
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "draw",
+          "hand_box_confidence": 0.9918,
+          "inference_ms": 361.5
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "draw",
+          "hand_box_confidence": 0.9922,
+          "inference_ms": 997.3
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-022955.mp4",
+      "second": 3.815,
+      "crop": [
+        511,
+        336,
+        623,
+        399
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9975,
+          "inference_ms": 350.2
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9976,
+          "inference_ms": 1025.8
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-022955.mp4",
+      "second": 3.815,
+      "crop": [
+        569,
+        360,
+        681,
+        423
+      ],
+      "player": "right",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 364.4
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 992.7
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-023522.mp4",
+      "second": 3.565,
+      "crop": [
+        498,
+        353,
+        610,
+        416
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9977,
+          "inference_ms": 379.7
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.998,
+          "inference_ms": 1029.3
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-023522.mp4",
+      "second": 3.565,
+      "crop": [
+        568,
+        365,
+        680,
+        428
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9886,
+          "inference_ms": 360.5
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9889,
+          "inference_ms": 995.4
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-032746.mp4",
+      "second": 3.815,
+      "crop": [
+        487,
+        382,
+        599,
+        445
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9961,
+          "inference_ms": 350.6
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9963,
+          "inference_ms": 1036.0
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-032746.mp4",
+      "second": 3.815,
+      "crop": [
+        562,
+        398,
+        674,
+        461
+      ],
+      "player": "right",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.9971,
+          "inference_ms": 337.7
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.9975,
+          "inference_ms": 1041.9
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-033900.mp4",
+      "second": 4.815,
+      "crop": [
+        563,
+        389,
+        675,
+        452
+      ],
+      "player": "left",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.995,
+          "inference_ms": 356.3
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.9956,
+          "inference_ms": 994.4
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-033900.mp4",
+      "second": 5.315,
+      "crop": [
+        602,
+        379,
+        714,
+        442
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9947,
+          "inference_ms": 375.3
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9944,
+          "inference_ms": 998.0
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-043216.mp4",
+      "second": 4.315,
+      "crop": [
+        470,
+        350,
+        582,
+        413
+      ],
+      "player": "left",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9966,
+          "inference_ms": 362.8
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9967,
+          "inference_ms": 1042.8
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-043216.mp4",
+      "second": 4.315,
+      "crop": [
+        531,
+        348,
+        643,
+        411
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9995,
+          "inference_ms": 326.1
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9994,
+          "inference_ms": 980.9
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-045826.mp4",
+      "second": 2.815,
+      "crop": [
+        557,
+        362,
+        669,
+        425
+      ],
+      "player": "left",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9974,
+          "inference_ms": 356.8
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9974,
+          "inference_ms": 1043.5
+        }
+      }
+    },
+    {
+      "video": "Video-17112014-045826.mp4",
+      "second": 2.815,
+      "crop": [
+        615,
+        372,
+        727,
+        435
+      ],
+      "player": "right",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.9959,
+          "inference_ms": 340.7
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 0.9956,
+          "inference_ms": 971.8
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-014155.mp4",
+      "second": 4.315,
+      "crop": [
+        484,
+        321,
+        596,
+        384
+      ],
+      "player": "left",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 360.5
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1030.4
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-014155.mp4",
+      "second": 4.315,
+      "crop": [
+        550,
+        319,
+        662,
+        382
+      ],
+      "player": "right",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 355.3
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1054.6
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-014226.mp4",
+      "second": 3.815,
+      "crop": [
+        482,
+        308,
+        594,
+        371
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 350.9
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1037.3
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-014226.mp4",
+      "second": 3.815,
+      "crop": [
+        556,
+        307,
+        668,
+        370
+      ],
+      "player": "right",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 332.3
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 957.5
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-015640.mp4",
+      "second": 4.565,
+      "crop": [
+        522,
+        333,
+        634,
+        396
+      ],
+      "player": "left",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 354.1
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1020.6
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-015640.mp4",
+      "second": 4.565,
+      "crop": [
+        586,
+        310,
+        698,
+        373
+      ],
+      "player": "right",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9971,
+          "inference_ms": 369.7
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9975,
+          "inference_ms": 1029.2
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-021418.mp4",
+      "second": 3.815,
+      "crop": [
+        550,
+        339,
+        662,
+        402
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9865,
+          "inference_ms": 354.3
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9868,
+          "inference_ms": 1004.2
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-021418.mp4",
+      "second": 4.065,
+      "crop": [
+        622,
+        350,
+        734,
+        413
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9935,
+          "inference_ms": 348.5
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9934,
+          "inference_ms": 994.8
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-021451.mp4",
+      "second": 4.315,
+      "crop": [
+        519,
+        331,
+        631,
+        394
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9979,
+          "inference_ms": 346.9
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9983,
+          "inference_ms": 1073.5
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-021451.mp4",
+      "second": 4.315,
+      "crop": [
+        582,
+        350,
+        694,
+        413
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 354.1
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1057.6
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-024054.mp4",
+      "second": 3.565,
+      "crop": [
+        514,
+        314,
+        626,
+        377
+      ],
+      "player": "left",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9883,
+          "inference_ms": 399.4
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9883,
+          "inference_ms": 1016.1
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-024054.mp4",
+      "second": 3.565,
+      "crop": [
+        594,
+        316,
+        706,
+        379
+      ],
+      "player": "right",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9886,
+          "inference_ms": 375.0
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9885,
+          "inference_ms": 989.5
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-024054.mp4",
+      "second": 5.065,
+      "crop": [
+        520,
+        331,
+        632,
+        394
+      ],
+      "player": "left",
+      "expected": "rock",
+      "results": {
+        "coreai-ane": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9968,
+          "inference_ms": 348.8
+        },
+        "mlx": {
+          "recognized": "rock",
+          "mac_move": "paper",
+          "outcome": "win",
+          "hand_box_confidence": 0.9968,
+          "inference_ms": 985.3
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-024054.mp4",
+      "second": 5.065,
+      "crop": [
+        611,
+        346,
+        723,
+        409
+      ],
+      "player": "right",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9804,
+          "inference_ms": 356.9
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 0.9812,
+          "inference_ms": 1041.5
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-033347.mp4",
+      "second": 4.065,
+      "crop": [
+        553,
+        305,
+        665,
+        368
+      ],
+      "player": "left",
+      "expected": "scissors",
+      "results": {
+        "coreai-ane": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 351.8
+        },
+        "mlx": {
+          "recognized": "scissors",
+          "mac_move": "rock",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1005.4
+        }
+      }
+    },
+    {
+      "video": "Video-24112014-033347.mp4",
+      "second": 4.065,
+      "crop": [
+        617,
+        322,
+        729,
+        385
+      ],
+      "player": "right",
+      "expected": "paper",
+      "results": {
+        "coreai-ane": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 375.9
+        },
+        "mlx": {
+          "recognized": "paper",
+          "mac_move": "scissors",
+          "outcome": "win",
+          "hand_box_confidence": 1.0,
+          "inference_ms": 1079.6
+        }
+      }
+    }
+  ]
+}

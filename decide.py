@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = ["mlx-vlm>=0.7.11"]
 # ///
-"""d1-gestures: your webcam in, hand gesture and facial expression out, with d1-2B (Liquid AI) on Apple Silicon.
+"""Rock, paper, scissors with d1-2B (Liquid AI) on Apple Silicon.
 
     uv run decide.py            # then open http://127.0.0.1:8049
 
@@ -11,7 +11,7 @@ GET  /       -> index.html, the webcam page
 POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ..., "backend": ...}
              ?backend=mlx (default) | coreai-gpu | coreai-ane: the same model on Core AI, GPU or Neural Engine
              (optional: needs the artefacts and worker built under coreai/, see the README)
-GET  /questions -> {"questions": the active set, "default": QUESTIONS, "budget": its Core AI size, "backends": ...}
+GET  /questions -> {"questions": the active set, "default": QUESTIONS, "presets": ..., "budget": ..., "backends": ...}
 POST /questions  body {"questions": {...}} -> the same, now asking these (400 with the reason if they are not valid)
 GET  /status -> {"model": ..., "ready": true, "backends": {name: {"available": bool, "reason": ...}}, "machine": mactop installed}
 GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}: the Mac's CPU, GPU and Neural Engine load and power, from
@@ -32,7 +32,7 @@ PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 # The default questions (the page can ask others, POST /questions): a "choice" answers with one key of "criteria", a
 # "box" with where it is; also "noul" (yes/no), "score" (levels, lowest first), "number" (a count or an amount in a
 # "range", e.g. [0, 20] with "step": 1) and "boxes" (every one, up to "max": where and how many).
-QUESTIONS = {
+GESTURE_QUESTIONS = {
     "hand": {"type": "choice", "instructions": "What gesture is the person making with their hand?",
              "criteria": {"thumbs_up": "A fist with the thumb pointing up",
                           "thumbs_down": "A fist with the thumb pointing down",
@@ -50,6 +50,25 @@ QUESTIONS = {
     "hand_box": {"type": "box", "instructions": "Where is the hand making the gesture?"},
     "face_box": {"type": "box", "instructions": "Where is the person's face?"},
 }
+
+QUESTIONS = {
+    "hand": {
+        "type": "choice",
+        "instructions": "Which rock-paper-scissors move does the visible player's hand show?",
+        "criteria": {
+            "rock": "A closed fist with all fingers curled in",
+            "paper": "A flat open hand with all fingers extended",
+            "scissors": "Only the index and middle fingers extended like a V, other fingers curled",
+            "none": "No visible hand or the hand is not showing rock, paper or scissors",
+        },
+    },
+    "hand_box": {
+        "type": "box",
+        "instructions": "Where is the player's visible hand closest to the camera?",
+    },
+}
+PRESETS = {"Rock paper scissors": QUESTIONS, "Gestures & face": GESTURE_QUESTIONS}
+COUNTER_MOVES = {"rock": "paper", "paper": "scissors", "scissors": "rock"}
 
 TYPES = ("noul", "choice", "score", "number", "box", "boxes")  # what d1 answers about a picture (text and date read a text state)
 MAX_QUESTIONS, MAX_BODY = 12, 16 * 1024
@@ -117,7 +136,7 @@ def budget():
 
 
 def asking():
-    return {"questions": questions, "default": QUESTIONS, "budget": budget(), "backends": backends()}
+    return {"questions": questions, "default": QUESTIONS, "presets": PRESETS, "budget": budget(), "backends": backends()}
 
 
 def backends():
@@ -230,7 +249,10 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
         except Exception as e:
             return self._json(400, {"error": "not a picture: %s" % e, "backend": backend})
         try:
-            self._json(200, {**run(img, backend), "backend": backend})
+            result = run(img, backend)
+            if questions == QUESTIONS:
+                result["mac_move"] = COUNTER_MOVES.get(result["answers"]["hand"]["choice"])
+            self._json(200, {**result, "backend": backend})
         except Unavailable as e:  # never a silent fallback to MLX
             self._json(503, {"error": "%s is not available: %s" % (backend, e), "backend": backend})
         except ValueError as e:

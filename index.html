@@ -1,18 +1,15 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>d1 gestures · a model that decides, without writing a word</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<title>Rock Paper Scissors · D1</title>
 <style>
 :root{
   color-scheme: dark;
   --bg:#0F1318; --surface:#161C23; --surface2:#1C232C; --line:#2A3440;
   --ink:#EEF1F4; --muted:#8E99A7;
   --remote:#6CB4FF; --local:#F5A946;
-  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
-  --sans:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
-  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --display:system-ui, "Helvetica Neue", sans-serif;
+  --sans:system-ui, "Helvetica Neue", sans-serif;
+  --mono:ui-monospace, Menlo, monospace;
 }
 [hidden]{display:none!important}
 *{box-sizing:border-box}
@@ -20,8 +17,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:cla
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:4px}
 main{max-width:none;margin-inline:auto;padding:clamp(16px,3vh,40px) clamp(16px,2.5vw,48px);display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px)}
-.eyebrow{font-family:var(--mono);font-size:.78em;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:1.02;margin:0;text-wrap:balance;font-size:clamp(1.5rem,2.4vw,2.4rem)}
+h1{font-family:var(--display);font-weight:760;letter-spacing:-.045em;line-height:1.02;margin:0;text-wrap:balance;font-size:clamp(2rem,4.4vw,4.75rem)}
 .lede{color:var(--muted);margin:0;text-wrap:pretty;font-size:clamp(.95rem,1.1vw,1.05rem)}
 .lede b{color:var(--ink);font-weight:500}
 .btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:.6em 1.15em;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.4em;text-decoration:none}
@@ -61,6 +57,13 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 .gest-stage p{position:relative;color:var(--muted);padding:2em;text-align:center;margin:0}
 .gest-left{display:flex;flex-direction:column;gap:14px;min-width:0}
 .gest-side{display:flex;flex-direction:column;gap:10px;min-width:0}
+.counter{position:relative;isolation:isolate;overflow:hidden;display:grid;justify-items:center;align-content:center;min-height:clamp(210px,34vh,340px);padding:20px;gap:12px;border:1px solid var(--line);border-radius:18px;background:
+  radial-gradient(ellipse at 50% 85%,rgb(245 169 70 / .16),transparent 70%),var(--surface)}
+.counter h2,.counter p{margin:0}
+.counter h2{font:600 .85rem var(--mono);color:var(--local)}
+#counter-symbol{display:grid;place-items:center;font:clamp(5rem,13vw,11rem)/1 "Apple Color Emoji","Segoe UI Emoji",sans-serif;min-height:1em}
+#counter-name{font-size:clamp(1.05rem,2vw,1.6rem);font-weight:650;text-align:center}
+.gest-now.rps{grid-template-columns:1fr}
 .gest-now{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .gest-now button{background:var(--surface);border:0;border-radius:12px;padding:8px 14px;text-align:left;cursor:pointer;min-width:0}
 .gest-now button[aria-pressed="false"]{opacity:.4}  /* switched off: no box, no bars */
@@ -91,17 +94,22 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 .gest-bars .top i::before{background:var(--local)} .gest-bars .top span{color:var(--ink)}
 .gest-bars span{color:var(--muted)} .gest-bars b{font-family:var(--mono);font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
 @media (max-width:1000px){.gest{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 </style></head>
 <body><main>
-  <div class="eyebrow">Webcam → decisions · zero tokens generated · Apple Silicon</div>
-  <h1>d1: a model that decides, without writing a word.</h1>
-  <p class="lede"><b>d1-2B</b> by Liquid AI looks at each webcam frame and answers typed questions (which gesture? which expression? where are the hand and the face?) with their probabilities, <b>in one forward pass</b>, powered by <b>mlx-vlm</b>. It generates no tokens: all the work is prefill, and nothing leaves your Mac.</p>
+  <h1>Rock, paper, scissors</h1>
+  <p class="lede">Show your hand. D1 sees your move, then the Mac plays the counter.</p>
   <div class="gest">
     <div class="gest-left">
       <div class="gest-stage" id="stage">
         <div class="gest-mirror"><video id="vid" muted playsinline></video><div id="boxes"></div></div>
-        <p id="idle">Press Start camera (or Load video): d1 answers the questions on the right on every frame. With the default ones, make a gesture (thumbs up, OK, peace, open palm, a fist) and try a smile. Or ask your own under Questions.</p>
+        <p id="idle">Start the camera or load a recording. Keep one hand in view.</p>
+      </div>
+      <div class="ctl">
+        <button type="button" id="go" class="btn">Start camera</button>
+        <button type="button" id="file" class="btn ghost">Load video</button>
+        <input type="file" id="pick" accept="video/*" hidden>
+        <span class="hint" id="state">D1 · Offline after setup</span>
       </div>
       <div class="mon" id="machine">
         <div class="lg"><span><i style="background:var(--c-cpu)"></i>CPU</span><span><i style="background:var(--c-gpu)"></i>GPU</span><span><i style="background:var(--c-ane)"></i>Neural Engine</span><span>busy %</span><span><i style="background:#EEF1F4"></i>Mac power, W</span><span>whole Mac (mactop), last 60 s</span><button type="button" id="metrics" aria-pressed="true">Stop metrics</button></div>
@@ -110,6 +118,15 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
       </div>
     </div>
     <div class="gest-side">
+      <section id="counter" class="counter" aria-label="Mac's move" hidden>
+        <h2>Mac plays</h2>
+        <span id="counter-symbol" aria-hidden="true">—</span>
+        <p id="counter-name" aria-live="polite">Waiting for a move</p>
+      </section>
+      <div class="gest-now" id="now"></div>
+      <div id="bars"></div>
+      <div class="ctl"><div class="seg" id="be" role="radiogroup" aria-label="Backend"><button type="button" role="radio" data-b="mlx" aria-checked="true">MLX</button><button type="button" role="radio" data-b="coreai-gpu" aria-checked="false" disabled>Core AI GPU</button><button type="button" role="radio" data-b="coreai-ane" aria-checked="false" disabled>Core AI Neural Engine</button></div></div>
+      <div class="facts"><span>ms per decision <b id="ms">—</b></span><span>input tokens <b id="in">—</b></span><span>tokens generated <b>0</b></span><span>decisions/s <b id="rate">—</b></span></div>
       <details class="qs" id="qs">
         <summary><b>Questions</b><span class="hint" id="qsum"></span></summary>
         <div class="qs-body">
@@ -120,11 +137,6 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
           <label class="hint">Show a box, and count it, from <input type="number" id="minp" min="50" max="99" step="5" style="width:4em" aria-label="Minimum confidence, percent"> % sure it is there</label>
         </div>
       </details>
-      <div class="gest-now" id="now"></div>
-      <div id="bars"></div>
-      <div class="ctl"><div class="seg" id="be" role="radiogroup" aria-label="Backend"><button type="button" role="radio" data-b="mlx" aria-checked="true">MLX</button><button type="button" role="radio" data-b="coreai-gpu" aria-checked="false" disabled>Core AI GPU</button><button type="button" role="radio" data-b="coreai-ane" aria-checked="false" disabled>Core AI Neural Engine</button></div></div>
-      <div class="facts"><span>ms per decision <b id="ms">—</b></span><span>input tokens <b id="in">—</b></span><span>tokens generated <b>0</b></span><span>decisions/s <b id="rate">—</b></span></div>
-      <div class="ctl"><button type="button" id="go" class="btn">Start camera</button><button type="button" id="file" class="btn ghost">Load video</button><input type="file" id="pick" accept="video/*" hidden><a class="btn ghost" href="https://huggingface.co/LiquidAI/d1-2B" target="_blank" rel="noopener">d1-2B <span aria-hidden="true">↗</span></a><a class="btn ghost" href="https://github.com/Blaizzy/mlx-vlm" target="_blank" rel="noopener">mlx-vlm <span aria-hidden="true">↗</span></a><span class="hint" id="state">LiquidAI/d1-2B-MLX-8bit · mlx-vlm</span></div>
     </div>
   </div>
 </main>
@@ -132,7 +144,7 @@ h1{font-family:var(--display);font-weight:700;letter-spacing:-.02em;line-height:
 const $ = s => document.querySelector(s);
 // Display labels for known answer keys (the default questions' options); any other key shows as it is, humanised.
 const LABELS = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm',
-  pointing:'☝️ Pointing', fist:'✊ Fist', none:'· No gesture', smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
+  pointing:'☝️ Pointing', fist:'✊ Fist', rock:'✊ Rock', paper:'✋ Paper', scissors:'✌️ Scissors', none:'· No gesture', smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
 const S = {on:false, stream:null, url:null, src:null, run:0, backend:'mlx'};
 const NAMES = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI Neural Engine'};
 const human = k => k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
@@ -141,6 +153,7 @@ const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 document.querySelectorAll('#be button').forEach(b=>b.onclick = ()=>{
   S.backend = b.dataset.b; document.querySelectorAll('#be button').forEach(x=>x.setAttribute('aria-checked', x===b));
   $('#ms').textContent = '—';
+  if(S.on) show();
   if(S.on) $('#state').textContent = 'switching to '+NAMES[S.backend]+' (a Core AI worker starts on first use; the Neural Engine\'s very first start takes about a minute)';
 });
 function setBackends(backends){  // which backends can run the active questions; a disabled one in use falls back to MLX
@@ -156,21 +169,27 @@ fetch('/status').then(r=>r.json()).then(j=>{
 
 // ---- The answers: one tile per question (tap: hide it and its box), bars for its probabilities, boxes on the video.
 // A box question named X_box goes with the question X: one tile, the box labelled with X's answer (and hidden with it).
-const Q = {active:{}, off:{}};
+const Q = {active:{}, off:{}, rps:false};
+const RPS = 'Rock paper scissors';
+const MOVE_SYMBOLS = {rock:'✊', paper:'✋', scissors:'✌️'};
 const PALETTE = ['var(--local)', 'var(--remote)', '#7BD88F', '#E06C9F', '#C792EA', '#E5C07B'];
 const isBox = q => q.type === 'box' || q.type === 'boxes';
 const owner = name => name.endsWith('_box') && Q.active[name.slice(0, -4)] && !isBox(Q.active[name.slice(0, -4)]) ? name.slice(0, -4) : name;
 function options(q){  // [[answer key, label]] of a question's bars
-  if(q.type === 'choice') return Object.keys(q.criteria).map(k => [k, LABELS[k] || human(k)]);
+  if(q.type === 'choice') return Object.keys(q.criteria).map(k => [k, Q.rps && k === 'none' ? 'No move' : LABELS[k] || human(k)]);
   if(q.type === 'score') return q.criteria.map((t, i) => [String(i), t]);
   if(q.type === 'noul') return [['yes', 'Yes']];
   return [];
 }
 function layout(qs){  // build the tiles and bars for a set of questions
   Q.active = qs; Q.off = {};
+  Q.rps = JSON.stringify(qs) === JSON.stringify(PRESETS[RPS]);
+  $('#counter').hidden = !Q.rps;
+  $('#now').classList.toggle('rps', Q.rps);
+  showCounter(null);
   const names = Object.keys(qs);
   $('#now').innerHTML = names.filter(n => owner(n) === n).map(n =>
-    `<button type="button" data-q="${esc(n)}" aria-pressed="true" title="Hide or show this answer and its box"><small>${esc(human(n))}</small><b>—</b></button>`).join('');
+    `<button type="button" data-q="${esc(n)}" aria-pressed="true" title="Hide or show this answer and its box"><small>${Q.rps && n === 'hand' ? 'Your hand · D1' : esc(human(n))}</small><b>—</b></button>`).join('');
   $('#bars').innerHTML = names.filter(n => options(qs[n]).length).map(n => `<div class="gest-bars" data-q="${esc(n)}">` +
     options(qs[n]).map(([k, t]) => `<div data-k="${esc(k)}"><span>${esc(t)}</span><i></i><b>—</b></div>`).join('') + '</div>').join('');
   document.querySelectorAll('#now button').forEach(b => b.onclick = () => {
@@ -178,7 +197,7 @@ function layout(qs){  // build the tiles and bars for a set of questions
     const bars = document.querySelector(`#bars [data-q="${CSS.escape(n)}"]`); if(bars) bars.hidden = Q.off[n];
     if(Q.off[n]){ b.querySelector('b').textContent = 'off'; hideBoxes(); }
   });
-  hideBoxes(); $('#qsum').textContent = names.map(human).join(' · ');
+  hideBoxes(); $('#qsum').textContent = Q.rps ? RPS : names.map(human).join(' · ');
 }
 function said(q, a){  // a tile's one-line answer
   if(!a) return '—';
@@ -203,40 +222,55 @@ function boxEl(i){  // the i-th box on the video, made on first use
   if(all[i]) return all[i];
   const el = document.createElement('div'); el.className = 'gest-box'; el.innerHTML = '<span></span>'; $('#boxes').append(el); return el;
 }
-function show(a, ms, tokens){
+function showCounter(move){
+  $('#counter-symbol').textContent = MOVE_SYMBOLS[move] ?? '—';
+  const name = move ? human(move) : 'Waiting for a move';
+  if($('#counter-name').textContent !== name) $('#counter-name').textContent = name;
+}
+function show(a = {}, ms = null, tokens = '—', macMove = null){
+  if(Q.rps) showCounter(macMove);
   Object.entries(Q.active).forEach(([n, q]) => {
     const o = owner(n), tile = document.querySelector(`#now [data-q="${CSS.escape(o)}"] b`);
     if(Q.off[o]) return;
     if(o === n && tile) tile.textContent = said(q, a[n]);
     const bars = document.querySelector(`#bars [data-q="${CSS.escape(n)}"]`);
-    if(bars && a[n]){
-      const p = a[n].type === 'noul' ? {yes: a[n].noul} : a[n].probabilities || {}, top = a[n].type === 'choice' ? a[n].choice : a[n].type === 'score' ? String(Math.round(a[n].score)) : null;
-      bars.querySelectorAll('[data-k]').forEach(row => { const v = p[row.dataset.k] || 0; row.querySelector('i').style.setProperty('--p', v);
-        row.querySelector('b').textContent = pct(v); row.classList.toggle('top', row.dataset.k === top || (a[n].type === 'noul' && v >= .5)); });
+    if(bars){
+      const answer = a[n];
+      const p = answer?.type === 'noul' ? {yes:answer.noul} : answer?.probabilities || {};
+      const top = answer?.type === 'choice' ? answer.choice : answer?.type === 'score' ? String(Math.round(answer.score)) : null;
+      bars.querySelectorAll('[data-k]').forEach(row => {
+        const v = p[row.dataset.k] || 0;
+        row.querySelector('i').style.setProperty('--p', v);
+        row.querySelector('b').textContent = answer ? pct(v) : '—';
+        row.classList.toggle('top', row.dataset.k === top || (answer?.type === 'noul' && v >= .5));
+      });
     }
   });
   let k = 0;  // the boxes, in question order, each box question its own colour
   Object.entries(Q.active).filter(([, q]) => isBox(q)).forEach(([n, q], qi) => {
     const o = owner(n), ans = a[n]; if(!ans || Q.off[o]) return;
-    if(o !== n && a[o] && a[o].type === 'choice' && a[o].choice === 'none') return;  // "no gesture": no box for it
+    if(!Q.rps && o !== n && a[o]?.type === 'choice' && a[o].choice === 'none') return;  // "no gesture": no box for it
     const found = seen(ans);
     found.forEach(f => {
       const el = boxEl(k++), b = f.box, c = PALETTE[qi % PALETTE.length];
       Object.assign(el.style, {left:b.left*100+'%', top:b.top*100+'%', width:(b.right-b.left)*100+'%', height:(b.bottom-b.top)*100+'%', borderColor:c});
       el.classList.toggle('in', b.top < .08); el.firstChild.style.background = c;
-      el.firstChild.textContent = o !== n && a[o] ? said(Q.active[o], a[o]) : human(n) + ' ' + pct(f.confidence);
+      const hand = Q.rps && n === 'hand_box';
+      el.firstChild.textContent = hand && a[o]?.choice === 'none' ? 'Hand ' + pct(f.found)
+        : o !== n && a[o] ? said(Q.active[o], a[o]) : human(n) + ' ' + pct(f.confidence);
       el.hidden = false;
     });
   });
   document.querySelectorAll('#boxes .gest-box').forEach((el, i) => { if(i >= k) el.hidden = true; });
-  $('#ms').textContent = Math.round(ms); $('#in').textContent = tokens;
+  $('#ms').textContent = ms == null ? '—' : Math.round(ms); $('#in').textContent = tokens;
 }
 
 // ---- The questions editor: presets, a form per question, "Ask these" sets them on the server (POST /questions),
 // kept in this browser and shareable as a link (#q=...).
 const TYPES = [['noul','Yes / No'], ['choice','Choice'], ['score','Score (levels)'], ['number','Number / count'], ['box','Box'], ['boxes','Boxes (several)']];
 const PRESETS = {
-  'Gestures & face': null,  // the server's default, filled in from GET /questions
+  [RPS]: null,
+  'Gestures & face': null,  // built-in presets come from GET /questions
   'People & objects': {person:{type:'noul', instructions:'Is there a person in the picture?'},
     light:{type:'score', instructions:'How bright is the room?', criteria:['Dark', 'Dim', 'Bright']},
     phone_box:{type:'box', instructions:'Where is the phone?'}},
@@ -340,6 +374,7 @@ function apply(j){  // the server's answer to GET or POST /questions
   const name = Object.keys(PRESETS).find(k => same(PRESETS[k])) || Object.keys(SAVED).map(k => 'mine:' + k).find(k => same(preset(k)));
   presets(name || 'Custom');
   if(!name) custom();  // a set of your own, asked: the one Custom brings back
+  if(S.on) loop(++S.run);
 }
 async function ask(qs){  // set the questions on the server; returns false (and says why) if it refuses them
   $('#qerr').textContent = 'setting…'; document.querySelectorAll('.q.err').forEach(q => q.classList.remove('err'));
@@ -347,7 +382,7 @@ async function ask(qs){  // set the questions on the server; returns false (and 
     const r = await fetch('/questions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({questions:qs})});
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-    apply(j); localStorage.setItem('d1-questions', JSON.stringify(qs)); $('#qerr').textContent = ''; return true;
+    apply(j); localStorage.setItem('d1-rps-questions', JSON.stringify(qs)); $('#qerr').textContent = ''; return true;
   }catch(e){
     $('#qerr').textContent = e.message;
     const m = /question '([^']+)'/.exec(e.message), i = m ? EDIT.findIndex(x => x.name.trim() === m[1]) : -1;
@@ -357,10 +392,10 @@ async function ask(qs){  // set the questions on the server; returns false (and 
 }
 $('#apply').onclick = () => ask(toQ());
 fetch('/questions').then(r => r.json()).then(async j => {  // the link's questions, else this browser's last, else the server's
-  PRESETS['Gestures & face'] = j.default;
+  Object.assign(PRESETS, j.presets);
   presets('Custom');
   let want = null;
-  try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : JSON.parse(localStorage.getItem('d1-questions')); }catch(e){}
+  try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : JSON.parse(localStorage.getItem('d1-rps-questions')); }catch(e){}
   EDIT = fromQ(want || j.questions); editor();
   if(want && JSON.stringify(want) !== JSON.stringify(j.questions)){ if(!(await ask(want))){ apply(j); $('#qs').open = true; } }
   else apply(j);
@@ -375,16 +410,19 @@ async function loop(run){  // one frame in flight at a time: the next one leaves
       c.width = 640; c.height = Math.round(640 * v.videoHeight / v.videoWidth) || 480;
       c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
       const blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', .85));
+      if(S.run !== run) return;
       const backend = S.backend;
       const r = await fetch('/run?backend='+backend, {method:'POST', headers:{'Content-Type':'image/jpeg'}, body:blob});
       const j = await r.json().catch(()=>({}));
       if(!r.ok || !j.answers) throw new Error(j.error || 'HTTP '+r.status);
       if(S.run!==run) return;
       if(j.backend!==S.backend) continue;  // the selector moved while this frame was out
-      show(j.answers, j.ms, j.usage.input_tokens);
+      show(j.answers, j.ms, j.usage.input_tokens, j.mac_move);
       n++; const dt = performance.now() - t1; if(dt > 1000){ $('#rate').textContent = (n*1000/dt).toFixed(1); n = 0; t1 = performance.now(); }
       $('#state').textContent = 'live · '+NAMES[backend]+' · round trip '+Math.round(performance.now()-t0)+' ms'+(j.startup_s ? ' · worker started in '+j.startup_s+' s' : '');
     }catch(e){
+      if(S.run !== run) return;
+      show();
       $('#state').textContent = (e instanceof TypeError ? 'd1 is not answering (uv run decide.py): ' : '')+e.message;  // a backend's own error says what is missing
       await new Promise(r=>setTimeout(r, 1500));
     }
@@ -472,27 +510,43 @@ function stop(){  // one stop for both sources: the camera or a local video file
   if(S.stream) S.stream.getTracks().forEach(t=>t.stop()); S.stream = null;
   const v = $('#vid'); v.pause(); v.srcObject = null; v.removeAttribute('src'); v.load();
   if(S.url) URL.revokeObjectURL(S.url); S.url = null; S.src = null;
-  hideBoxes(); $('#idle').hidden = false; S.ar = 16/9; fit();
+  show(); $('#rate').textContent = '—';
+  $('#state').textContent = ''; $('#stage').onclick = null;
+  $('#idle').hidden = false; S.ar = 16/9; fit();
   $('#go').textContent = 'Start camera'; $('#file').textContent = 'Load video';
 }
-async function start(src){  // src: 'camera' or a File; plays it in #vid and starts the decision loop
-  stop(); const v = $('#vid'), file = src !== 'camera';
+async function start(src){  // src: 'camera' or a File
+  stop();
+  const run = S.run, v = $('#vid'), file = src !== 'camera';
+  const play = async () => {
+    await v.play();
+    if(S.run !== run) return;
+    $('.gest-mirror').classList.toggle('flat', file);
+    S.ar = v.videoWidth / v.videoHeight || 16/9; fit(); $('#idle').hidden = true;
+    S.on = true; S.src = file ? 'file' : 'camera';
+    $(file ? '#file' : '#go').textContent = file ? 'Stop video' : 'Stop camera';
+    loop(run);
+  };
+  const fail = e => {
+    if(S.run !== run) return;
+    stop(); $('#state').textContent = (file ? 'Cannot play this video: ' : 'Camera not available: ') + e.message;
+  };
   try{
     if(file){ S.url = URL.createObjectURL(src); v.src = S.url; }
-    else v.srcObject = S.stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280}, height:{ideal:720}}, audio:false});
-    v.loop = file; v.muted = v.defaultMuted = true; v.playsInline = true;  // Safari plays without a click only muted video
-    try{ await v.play(); }
-    catch(e){  // Safari can still refuse (the file picker is not a click): play on the next click on the video
-      if(e.name !== 'NotAllowedError') throw e;
-      $('#idle').hidden = true; $('#state').textContent = 'click the video to start it';
-      await new Promise((res, rej) => { $('#stage').onclick = () => v.play().then(res, rej); });
-      $('#stage').onclick = null;
+    else{
+      const stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280}, height:{ideal:720}}, audio:false});
+      if(S.run !== run){ stream.getTracks().forEach(t => t.stop()); return; }
+      v.srcObject = S.stream = stream;
     }
-  }catch(e){ stop(); $('#state').textContent = (file ? 'cannot play this video: ' : 'camera not available: ')+e.message; return; }
-  $('.gest-mirror').classList.toggle('flat', file);  // the mirror is only for the selfie camera
-  S.ar = v.videoWidth / v.videoHeight || 16/9; fit(); $('#idle').hidden = true;
-  S.on = true; S.src = file ? 'file' : 'camera'; $(file ? '#file' : '#go').textContent = file ? 'Stop video' : 'Stop camera';
-  loop(++S.run);
+    v.loop = file; v.muted = v.defaultMuted = true; v.playsInline = true;
+    try{ await play(); }
+    catch(e){
+      if(S.run !== run) return;
+      if(e.name !== 'NotAllowedError') throw e;
+      $('#idle').hidden = true; $('#state').textContent = 'Click the video to play it.';
+      $('#stage').onclick = () => { $('#stage').onclick = null; play().catch(fail); };
+    }
+  }catch(e){ fail(e); }
 }
 $('#go').onclick = () => S.src==='camera' ? stop() : start('camera');
 $('#file').onclick = () => S.src==='file' ? stop() : $('#pick').click();

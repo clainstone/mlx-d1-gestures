@@ -1,12 +1,8 @@
-# d1 gestures
+# Rock, paper, scissors with D1
 
-Your webcam in, hand gesture and facial expression out, live, on a Mac.
+Show one hand to the webcam. D1 identifies rock, paper, scissors, or no move and draws a box around the hand. The Mac sees your move first and plays the counter. The large symbol is the Mac's move, and the four bars show D1's probabilities for your hand.
 
-![d1 on the Core AI Neural Engine reading a video file: thumbs up 98% and smile 71% with boxes, 187 ms per decision, 0 tokens generated; the charts show the GPU busy at ~130 W before the switch, then the Neural Engine 90% busy and the Mac at 37 W](screenshot-coreai.png)
-
-[d1-2B](https://huggingface.co/LiquidAI/d1-2B) by Liquid AI is a decision model, not a chat model. Each webcam frame gets four typed questions (which gesture? which expression? where is the hand? where is the face?), and one forward pass answers all of them with calibrated probabilities. It generates **0 tokens**: all the work is prefill. On an M5 Max that is about 70 ms and ~600 input tokens per frame, roughly 14 decisions a second. It runs through [mlx-vlm](https://github.com/Blaizzy/mlx-vlm).
-
-Everything stays on your Mac: the page and the model are served from `127.0.0.1`, and no frame is uploaded anywhere.
+[d1-2B](https://huggingface.co/LiquidAI/d1-2B) by Liquid AI classifies and locates the hand in one forward pass with **0 generated tokens**. The browser and model run locally on `127.0.0.1`.
 
 ## Run it
 
@@ -18,17 +14,30 @@ Requires Apple Silicon and [uv](https://docs.astral.sh/uv/).
 
 It starts `decide.py` and opens <http://127.0.0.1:8049> once the model is ready (Ctrl-C stops it). Press **Start camera** and allow it. The first run downloads the model (2.2 GB). Prefer it by hand? `uv run decide.py`, then open the page.
 
-Try thumbs up, thumbs down, OK, peace, open palm, pointing, a fist. Then smile, look sad or surprised, or keep a neutral face. Hold each one still for a second, close to the camera.
+Keep one hand close to the camera and show a fist, an open palm, or two fingers. Use **Load video** to replay a local recording. Once the packages and model weights are cached, start with `UV_OFFLINE=1 HF_HUB_OFFLINE=1 ./start.sh` to run without a download.
 
 ## How it works
 
-1. The browser draws each webcam frame onto a canvas and posts it as a 640 px JPEG to `POST /run`. The next frame is sent only after the answer for this one comes back.
-2. `decide.py` passes the frame and the active questions to `model.system_one(...)`, which runs one forward pass on the GPU.
-3. The page draws one tile and the probabilities as bars per question, plus the boxes on the mirrored video. Tap a tile to hide it and its box.
+1. The browser sends each 640 px camera or video frame as a JPEG to `POST /run`, with one frame in flight.
+2. D1 returns the `hand` choice and its four probabilities plus the `hand_box`. The browser shows the box using the existing confidence setting, 70% by default.
+3. The server returns `mac_move` by applying the game rules to D1's chosen move. The large symbol updates as soon as the answer arrives. When D1 chooses `none`, the Mac waits for a move.
+
+## Recorded-throw benchmark on Apple M4
+
+The benchmark uses 30 hand reveals from 15 filmed rounds. Each trial sends one manually labeled frame cropped to the selected player's hand. Latency is the server's `ms` field, including preprocessing and D1 inference. Each backend receives five warm-up frames before the recorded trials. [ShakeFive2 research footage](https://www.projects.science.uu.nl/shakefive/)
+
+| Backend | Wins | Hand boxes at 70% | Median ms per decision | P90 ms |
+| --- | ---: | ---: | ---: | ---: |
+| Core AI Neural Engine | 29/30 | 30/30 | 354.8 | 375.4 |
+| MLX | 29/30 | 30/30 | 1018.4 | 1054.9 |
+
+[Per-throw results](benchmarks/m4-recorded-throws.json)
+
+Select **Core AI Neural Engine** for the measured faster mode on this M4. The benchmark times decisions on visible moves. Live footage can be used to measure the delay from a player's reveal to the rendered counter.
 
 ### Your own questions
 
-Open **Questions** on the page to ask d1 something else, on the camera or a video file: pick a preset (*Gestures & face*, the default; *People & objects*; *Counting*; *At the desk*) or build your own, then press **Ask these**. Each question has a name, a type and the question itself:
+Open **Questions** on the page to ask d1 something else, on the camera or a video file: pick a preset (*Rock paper scissors*, the default; *Gestures & face*; *People & objects*; *Counting*; *At the desk*) or build your own, then press **Ask these**. Each question has a name, a type and the question itself:
 
 | Type | Answers | Core AI answer slots |
 | --- | --- | --- |
