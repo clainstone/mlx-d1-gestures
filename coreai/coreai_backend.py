@@ -16,6 +16,7 @@ first download); D1_COREAI_DIR=/path/to/folder with d1_gpu_prompt_fp16.aimodel /
 embed_tokens_fp16.npy, else coreai/out's or the repo's) uses your own export instead.
 """
 import json, os, shutil, subprocess, tempfile, time
+from pathlib import Path
 import numpy as np
 from d1_common import S_MAX, build_meta, embeddings, frame, pixels, prompt_inputs, prompt_problem, readout, uncrop_box
 
@@ -41,10 +42,33 @@ class Unavailable(Exception):
 
 class Worker:
     def __init__(self, path, compute, prompt_dir):
-        self.p = subprocess.Popen([WORKER, "--model", path, "--compute", compute, "--prompt", prompt_dir], stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE, text=True, bufsize=1)
-        self.ready = self.read()  # specialises (first time ever: minutes on the Neural Engine) and runs once
-        self.pix = tempfile.NamedTemporaryFile(prefix="d1-%s-" % compute, suffix=".f32", delete=False).name
+        self.p = self.pix = None
+        try:
+            self.p = subprocess.Popen(
+                [WORKER, "--model", path, "--compute", compute, "--prompt", prompt_dir],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
+            )
+            self.ready = self.read()  # the worker specializes and warms the model once
+            with tempfile.NamedTemporaryFile(prefix=f"d1-{compute}-", suffix=".f32", delete=False) as frame_file:
+                self.pix = Path(frame_file.name)
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self):
+        if self.p is not None:
+            if self.p.poll() is None:
+                self.p.kill()
+            self.p.wait()
+            try:
+                self.p.stdin.close()
+            except BrokenPipeError:
+                pass
+            self.p.stdout.close()
+            self.p = None
+        if self.pix is not None:
+            self.pix.unlink(missing_ok=True)
+            self.pix = None
 
     def read(self):
         line = self.p.stdout.readline()
@@ -57,7 +81,7 @@ class Worker:
 
     def logits(self, x):
         x.astype(np.float32).tofile(self.pix)
-        self.p.stdin.write(json.dumps({"pixels": self.pix}) + "\n")
+        self.p.stdin.write(json.dumps({"pixels": str(self.pix)}) + "\n")
         self.p.stdin.flush()
         return np.array(self.read()["logits"], dtype=np.float32).reshape(S_MAX, -1)
 
@@ -83,8 +107,10 @@ class CoreAI:
         if why:
             raise Unavailable(why)
         w = self.workers.get(name)
-        if w is not None and w.p.poll() is None:
-            return 0.0
+        if w is not None:
+            if w.p.poll() is None:
+                return 0.0
+            self.workers.pop(name).close()
         t = time.perf_counter()
         try:
             path = model_path(name)
@@ -99,31 +125,34 @@ class CoreAI:
             emb = np.load(os.path.join(LOCAL, "embed_tokens_fp16.npy"), mmap_mode="r") if LOCAL and os.path.exists(
                 os.path.join(LOCAL, "embed_tokens_fp16.npy")) else embeddings()
             d = tempfile.mkdtemp(prefix="d1-prompt-")
-            arrays = prompt_inputs(self.meta, emb)
-            for k, v in arrays.items():
-                v.tofile(os.path.join(d, k + ".f16"))
-            with open(os.path.join(d, "shapes.json"), "w") as f:
-                json.dump({k: list(v.shape) for k, v in arrays.items()}, f)
+            try:
+                arrays = prompt_inputs(self.meta, emb)
+                for k, v in arrays.items():
+                    v.tofile(os.path.join(d, k + ".f16"))
+                with open(os.path.join(d, "shapes.json"), "w") as f:
+                    json.dump({k: list(v.shape) for k, v in arrays.items()}, f)
+            except BaseException:
+                shutil.rmtree(d, ignore_errors=True)
+                raise
             self.prompt_dir = d
         return self.prompt_dir
 
     def close(self):
         """Stop the workers and drop the prompt files (the questions changed: a new CoreAI takes over)."""
         for w in self.workers.values():
-            w.p.kill()
-            w.p.wait()
-            os.unlink(w.pix)
-        self.workers = {}
+            w.close()
+        self.workers.clear()
         if self.prompt_dir:
             shutil.rmtree(self.prompt_dir, ignore_errors=True)
             self.prompt_dir = None
 
     def decide(self, name, img):
         w = self.workers[name]
+        frame_pixels = pixels(self.engine, frame(img))
         try:
-            logits = w.logits(pixels(self.engine, frame(img)))  # frame(): the 640x360 the export was traced at
+            logits = w.logits(frame_pixels)
         except Exception:
-            self.workers.pop(name, None)  # a dead worker is restarted on the next request
+            self.workers.pop(name).close()  # the next request can start a fresh worker
             raise
         answers = readout(self.engine, self.questions, logits, self.meta)
         for a in answers.values():  # boxes come back in the crop's coordinates: map them onto the whole frame

@@ -1,17 +1,17 @@
 #!/usr/bin/env -S uv run
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["mlx-vlm>=0.7.11"]
+# dependencies = ["mlx-vlm==0.8.0"]
 # ///
 """Rock, paper, scissors with d1-2B (Liquid AI) on Apple Silicon.
 
-    uv run decide.py            # then open the URL printed by the server
+    uv run --locked decide.py            # then open the URL printed by the server
 
 GET  /       -> index.html, the webcam page
 POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ..., "backend": ...}
              ?backend=mlx (default) | coreai-gpu | coreai-ane: the same model on Core AI, GPU or Neural Engine
              (optional: needs the artefacts and worker built under coreai/, see the README)
-GET  /questions -> {"questions": the active set, "default": QUESTIONS, "presets": ..., "budget": ..., "backends": ...}
+GET  /questions -> {"questions": the active set, "default": QUESTIONS, "presets": ..., "rps": bool, "budget": ..., "backends": ...}
 POST /questions  body {"questions": {...}} -> the same, now asking these (400 with the reason if they are not valid)
 GET  /status -> {"model": ..., "ready": true, "backends": {name: {"available": bool, "reason": ...}}, "machine": mactop installed}
 GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}: the Mac's CPU, GPU and Neural Engine load and power, from
@@ -20,14 +20,27 @@ GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}:
 One forward pass answers every question with calibrated probabilities and generates no tokens.
 Listens on 127.0.0.1 only, on port 8050 by default or a free port if 8050 is occupied.
 """
-import errno, http.server, io, json, os, shutil, subprocess, sys, threading, time, urllib.parse
-from mlx_vlm import load
-from PIL import Image
+import argparse
+import errno
+import http.server
+import io
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import threading
+import time
+import urllib.parse
+from pathlib import Path
 
 MODEL = os.environ.get("DECIDE_MODEL", "LiquidAI/d1-2B-MLX-8bit")
-PORT = int(os.environ.get("DECIDE_PORT", 8050))
+DEFAULT_PORT = 8050
 MAX_FRAME = 4 * 1024 * 1024
-PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+MAX_FRAME_PIXELS = 40_000_000
+ROOT = Path(__file__).resolve().parent
+PAGE = ROOT / "index.html"
 
 # The default questions (the page can ask others, POST /questions): a "choice" answers with one key of "criteria", a
 # "box" with where it is; also "noul" (yes/no), "score" (levels, lowest first), "number" (a count or an amount in a
@@ -74,26 +87,40 @@ TYPES = ("noul", "choice", "score", "number", "box", "boxes")  # what d1 answers
 MAX_QUESTIONS, MAX_BODY = 12, 16 * 1024
 questions = QUESTIONS  # the active set
 
-print("loading %s (the first run downloads 2.2 GB)..." % MODEL, flush=True)
-model, _ = load(MODEL)
+model = None
+coreai, CoreAI = None, None
+coreai_error = ""
+IMAGE_LEN = S_MAX = T_MAX = U_MAX = 0
 
 
-def decide(img):
+class Unavailable(RuntimeError):
+    pass
+
+
+def load_backends():
+    global model, coreai, CoreAI, Unavailable, coreai_error, IMAGE_LEN, S_MAX, T_MAX, U_MAX
+    from mlx_vlm import load
+    from PIL import Image
+
+    print(f"Loading {MODEL} (the first run downloads the model)...", flush=True)
+    model, _ = load(MODEL)
+    try:
+        sys.path.insert(0, str(ROOT / "coreai"))
+        from coreai_backend import CoreAI, Unavailable
+        from d1_common import IMAGE_LEN, S_MAX, T_MAX, U_MAX
+
+        coreai = CoreAI(model, QUESTIONS)
+    except Exception as exc:
+        coreai, CoreAI = None, None
+        coreai_error = f"Core AI backends not loaded: {exc}"
+    decide(Image.new("RGB", (640, 480), "gray"))
+
+
+def decide(img, active=None):
     t = time.perf_counter()
-    out = model.system_one(None, questions, media=[img])
+    out = model.system_one(None, questions if active is None else active, media=[img])
     out["ms"] = round((time.perf_counter() - t) * 1000, 1)
     return out
-
-
-# Core AI backends (optional): any problem loading them leaves MLX working and says why at /status and /run
-try:
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "coreai"))
-    from coreai_backend import CoreAI, Unavailable
-    from d1_common import IMAGE_LEN, S_MAX, T_MAX, U_MAX
-    coreai = CoreAI(model, QUESTIONS)
-except Exception as e:
-    coreai, CoreAI, Unavailable = None, None, RuntimeError
-    coreai_error = "Core AI backends not loaded: %s" % e
 
 
 def check(q):
@@ -118,11 +145,17 @@ def check(q):
 def set_questions(q):
     global questions, coreai
     check(q)
-    new = CoreAI(model, q) if CoreAI else None  # the prompt for q, and whether it fits the Core AI export
+    if json.dumps(q) == json.dumps(questions):  # prompt order matters
+        return
+
+    from PIL import Image
+
+    new = CoreAI(model, q) if CoreAI else None
+    # Validate the new prompt with a warm-up before changing the live preset.
+    decide(Image.new("RGB", (640, 480), "gray"), q)
     if coreai:
-        coreai.close()  # its workers hold the old prompt; the next Core AI frame starts one with the new
+        coreai.close()
     questions, coreai = q, new
-    decide(Image.new("RGB", (640, 480), "gray"))  # warm-up for the new prompt
 
 
 def budget():
@@ -136,7 +169,8 @@ def budget():
 
 
 def asking():
-    return {"questions": questions, "default": QUESTIONS, "presets": PRESETS, "budget": budget(), "backends": backends()}
+    return {"questions": questions, "default": QUESTIONS, "presets": PRESETS, "rps": questions == QUESTIONS,
+            "budget": budget(), "backends": backends()}
 
 
 def backends():
@@ -165,70 +199,122 @@ def run(img, backend):
     return out
 
 
-MACHINE = {}  # the latest mactop sample: CPU / GPU / Neural Engine busy %, whole-Mac watts, and its number "n"
-WATCH = {"proc": None, "asked": 0.0}
+MACHINE = {}
+WATCH = {"proc": None, "asked": 0.0, "sequence": 0}
+MACHINE_LOCK = threading.Lock()
 
 
 def machine():
-    """The latest sample. The first call starts mactop; it stops ~5 s after the page stops asking (its metrics switch)."""
-    WATCH["asked"] = time.time()
-    if WATCH["proc"] is None and shutil.which("mactop"):
-        WATCH["proc"] = subprocess.Popen(["mactop", "--headless", "--count", "0", "-i", "500"], stdout=subprocess.PIPE,
-                                         stderr=subprocess.DEVNULL, text=True)
-        threading.Thread(target=watch_machine, args=(WATCH["proc"],), daemon=True).start()
-    return dict(MACHINE)
+    """Start sampling on demand and return the most recent sample."""
+    with MACHINE_LOCK:
+        WATCH["asked"] = time.monotonic()
+        if WATCH["proc"] is None and shutil.which("mactop"):
+            try:
+                p = subprocess.Popen(["mactop", "--headless", "--count", "0", "-i", "500"],
+                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            except OSError:
+                return {}
+            WATCH["proc"] = p
+            threading.Thread(target=watch_machine, args=(p,), daemon=True).start()
+        return dict(MACHINE)
+
+
+def machine_sample(line):
+    # mactop can emit an array of JSON objects across several lines.
+    try:
+        j = json.loads(line.strip().lstrip("[,").rstrip(",]"))
+        s = j["soc_metrics"]
+        return dict(cpu=round(j["cpu_usage"]), gpu=round(s["gpu_active"]),
+                    ane=round(s["ane_active"]), watts=round(s["total_power"], 1))
+    except (ValueError, KeyError, TypeError, OverflowError):
+        return None
 
 
 def watch_machine(p):
-    for line in p.stdout:  # one JSON object a sample, ~1/s
-        if time.time() - WATCH["asked"] > 5:
-            break
-        try:
-            j = json.loads(line)
-            s = j["soc_metrics"]
-            MACHINE.update(n=MACHINE.get("n", 0) + 1, cpu=round(j["cpu_usage"]), gpu=round(s["gpu_active"]), ane=round(s["ane_active"]),
-                           watts=round(s["total_power"], 1))
-        except (ValueError, KeyError, TypeError):
-            pass
-    p.kill()
-    MACHINE.clear()
-    WATCH["proc"] = None
+    try:
+        for line in p.stdout:
+            with MACHINE_LOCK:
+                if time.monotonic() - WATCH["asked"] > 5:
+                    break
+            sample = machine_sample(line)
+            if sample is not None:
+                with MACHINE_LOCK:
+                    WATCH["sequence"] += 1
+                    MACHINE.update(n=WATCH["sequence"], **sample)
+    finally:
+        if p.poll() is None:
+            p.kill()
+        p.wait()
+        p.stdout.close()
+        with MACHINE_LOCK:
+            MACHINE.clear()
+            WATCH["proc"] = None
 
-decide(Image.new("RGB", (640, 480), "gray"))  # warm-up: the first pass costs ~1.5 s
 
+class Handler(http.server.BaseHTTPRequestHandler):  # the server serializes GPU requests
+    timeout = 10
 
-class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose: one frame at a time on the GPU
     def _send(self, code, body, ctype, headers=None):
-        self.send_response(code)
-        self.send_header("Content-Type", ctype)
-        for k, v in (headers or {}).items():
-            self.send_header(k, v)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            for k, v in (headers or {}).items():
+                self.send_header(k, v)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionError, TimeoutError):
+            self.close_connection = True
 
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, default=float).encode(), "application/json")
 
+    def _read_body(self, limit):
+        size = self.headers.get("Content-Length")
+        if size is None:
+            self._json(411, {"error": "Content-Length is required"})
+            return None
+        try:
+            size = int(size)
+        except ValueError:
+            self._json(400, {"error": "Invalid Content-Length"})
+            return None
+        if not 0 < size <= limit:
+            self._json(413, {"error": f"Send a request body from 1 to {limit} bytes"})
+            return None
+        try:
+            body = self.rfile.read(size)
+        except TimeoutError:
+            self._json(408, {"error": "Reading the request body timed out"})
+            return None
+        except ConnectionError:
+            self.close_connection = True
+            return None
+        if len(body) != size:
+            self._json(400, {"error": "Incomplete request body"})
+            return None
+        return body
+
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
-            return self._send(200, open(PAGE, "rb").read(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
-        if self.path == "/machine":
+        path = urllib.parse.urlsplit(self.path).path
+        if path in ("/", "/index.html"):
+            return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8", {"Cache-Control": "no-store"})
+        if path == "/machine":
             return self._json(200, machine())
-        if self.path == "/questions":
+        if path == "/questions":
             return self._json(200, asking())
-        if self.path == "/status":
+        if path == "/status":
             return self._json(200, {"model": MODEL, "ready": True, "backends": backends(), "machine": shutil.which("mactop") is not None})
         self._json(404, {"error": "unknown path"})
 
     def do_POST(self):
         url = urllib.parse.urlsplit(self.path)
         if url.path == "/questions":
-            n = int(self.headers.get("Content-Length") or 0)
-            if not 0 < n <= MAX_BODY:
-                return self._json(413, {"error": "send {\"questions\": {...}}, up to %d KB" % (MAX_BODY // 1024)})
+            raw = self._read_body(MAX_BODY)
+            if raw is None:
+                return
             try:
-                body = json.loads(self.rfile.read(n))
+                body = json.loads(raw)
                 if not isinstance(body, dict) or "questions" not in body:
                     raise ValueError('send {"questions": {name: question}}')
                 set_questions(body["questions"])
@@ -240,14 +326,22 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
         if url.path != "/run":
             return self._json(404, {"error": "unknown path"})
         backend = urllib.parse.parse_qs(url.query).get("backend", ["mlx"])[0]
-        n = int(self.headers.get("Content-Length") or 0)
-        if not 0 < n <= MAX_FRAME:
-            return self._json(413, {"error": "send one JPEG frame, up to 4 MB"})
-        body = self.rfile.read(n)
+        if backend not in ("mlx", "coreai-gpu", "coreai-ane"):
+            return self._json(400, {"error": "Unknown backend", "backend": backend})
+        body = self._read_body(MAX_FRAME)
+        if body is None:
+            return
+        from PIL import Image
+
         try:
-            img = Image.open(io.BytesIO(body)).convert("RGB")
-        except Exception as e:
-            return self._json(400, {"error": "not a picture: %s" % e, "backend": backend})
+            with Image.open(io.BytesIO(body)) as frame:
+                if frame.width * frame.height > MAX_FRAME_PIXELS:
+                    return self._json(413, {"error": "Image exceeds 40 megapixels", "backend": backend})
+                img = frame.convert("RGB")
+        except Image.DecompressionBombError:
+            return self._json(413, {"error": "Image exceeds 40 megapixels", "backend": backend})
+        except (OSError, ValueError) as exc:
+            return self._json(400, {"error": f"Could not read frame: {exc}", "backend": backend})
         try:
             result = run(img, backend)
             if questions == QUESTIONS:
@@ -264,21 +358,53 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
         pass
 
 
-try:
-    server = http.server.HTTPServer(("127.0.0.1", PORT), Handler)
-except OSError as exc:
-    if exc.errno != errno.EADDRINUSE:
-        raise
-    if "DECIDE_PORT" in os.environ:
-        raise SystemExit(f"Port {PORT} is in use. Set DECIDE_PORT to a free port or unset it for automatic selection.") from None
-    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
-
-with server:
-    url = f"http://127.0.0.1:{server.server_port}"
-    print(f"d1 ready: open {url}", flush=True)
-    if "--open" in sys.argv[1:]:
-        subprocess.run(["open", url], check=False)
+def bind_server():
+    requested = os.environ.get("DECIDE_PORT")
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        port = DEFAULT_PORT if requested is None else int(requested)
+        if not 0 <= port <= 65535:
+            raise ValueError
+    except ValueError:
+        raise SystemExit("DECIDE_PORT must be a port number from 0 to 65535.") from None
+    try:
+        return http.server.HTTPServer(("127.0.0.1", port), Handler)
+    except OSError as exc:
+        if exc.errno != errno.EADDRINUSE:
+            raise
+        if requested is not None:
+            raise SystemExit(f"Port {port} is in use. Set DECIDE_PORT to a free port or unset it for automatic selection.") from None
+        return http.server.HTTPServer(("127.0.0.1", 0), Handler)
+
+
+def terminate(*_):
+    raise SystemExit(0)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run the local D1 rock-paper-scissors demo.")
+    parser.add_argument("--open", action="store_true", help="open the demo in the default browser")
+    args = parser.parse_args()
+    signal.signal(signal.SIGTERM, terminate)
+    with bind_server() as server:
+        try:
+            load_backends()
+            url = f"http://127.0.0.1:{server.server_port}"
+            print(f"d1 ready: open {url}", flush=True)
+            if args.open:
+                subprocess.run(["open", url], check=False)
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            with MACHINE_LOCK:
+                sampler = WATCH["proc"]
+                if sampler is not None and sampler.poll() is None:
+                    sampler.kill()
+            if sampler is not None:
+                sampler.wait()
+            if coreai:
+                coreai.close()
+
+
+if __name__ == "__main__":
+    main()

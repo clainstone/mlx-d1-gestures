@@ -1,29 +1,42 @@
 {
-  "hardware": "Mac16,1 with Apple M4, macOS 27.0.1",
-  "dataset": "https://www.projects.science.uu.nl/shakefive/",
-  "method": "30 individual gestures from 15 rounds in ShakeFive2. One manually labeled reveal frame per player, cropped to the chosen hand, resized to 640x360 and encoded as JPEG. Crop is [left, top, right, bottom] in original pixels. Five warm-up frames per backend. The server records preprocessing and D1 inference.",
-  "summary": {
-    "coreai-ane": {
-      "input_width": 640,
-      "box_at_70_percent": 30,
-      "median_ms": 354.8,
-      "p90_ms": 375.4,
-      "wins": 29,
-      "draws": 1,
-      "losses": 0
-    },
-    "mlx": {
-      "input_width": 640,
-      "box_at_70_percent": 30,
-      "median_ms": 1018.4,
-      "p90_ms": 1054.9,
-      "wins": 29,
-      "draws": 1,
-      "losses": 0
-    }
+  "hardware": "Apple M4",
+  "macOS": "27.0.1",
+  "branch": "feat/rock-paper-scissors",
+  "commit": "c09f3aa353f3ed70082cbae26cbd2db4889fbe85",
+  "model": "LiquidAI/d1-2B-MLX-8bit",
+  "source": "ShakeFive2; 30 annotated hand reveals in 15 recorded rounds. Identical 640×360 JPEGs for each backend.",
+  "method": "Only RPS. Offline cached weights via a dedicated loopback server. Two blocks of 30 in mirrored backend order; five unmeasured warm-up requests per block. Worker startup and first request measured separately. Power is the mactop total_power estimate. Joules per decision divide that power by sustained request throughput.",
+  "order": [
+    "mlx",
+    "coreai-gpu",
+    "coreai-ane",
+    "coreai-ane",
+    "coreai-gpu",
+    "mlx"
+  ],
+  "idle_before": {
+    "samples": 4,
+    "watts": 4.372,
+    "cpu_watts": 0.188,
+    "gpu_watts": 0.008,
+    "ane_watts": 0.0,
+    "cpu_active": 6.233,
+    "gpu_active": 4.251,
+    "ane_active": 0.0
   },
-  "throws": [
+  "idle_after": {
+    "samples": 6,
+    "watts": 9.613,
+    "cpu_watts": 0.388,
+    "gpu_watts": 0.014,
+    "ane_watts": 0.0,
+    "cpu_active": 5.365,
+    "gpu_active": 2.529,
+    "ane_active": 0.0
+  },
+  "frames": [
     {
+      "index": 0,
       "video": "Video-17112014-013715.mp4",
       "second": 4.565,
       "crop": [
@@ -34,24 +47,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 349.3
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 971.9
-        }
-      }
+      "sha256": "1bea763cd0668de92651a1e7f3ab9b196b9b9ee35edb6736fc10809312325a75"
     },
     {
+      "index": 1,
       "video": "Video-17112014-013715.mp4",
       "second": 4.565,
       "crop": [
@@ -62,24 +61,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "draw",
-          "hand_box_confidence": 0.9918,
-          "inference_ms": 361.5
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "draw",
-          "hand_box_confidence": 0.9922,
-          "inference_ms": 997.3
-        }
-      }
+      "sha256": "90706c675961db0048d5e7ccc62f0648f67e0a88e0b8369e24fc25dc1085426d"
     },
     {
+      "index": 2,
       "video": "Video-17112014-022955.mp4",
       "second": 3.815,
       "crop": [
@@ -90,24 +75,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9975,
-          "inference_ms": 350.2
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9976,
-          "inference_ms": 1025.8
-        }
-      }
+      "sha256": "e64532cc5cda921d23ad9167591ed6a77468948a758441334f6faec4ebf53c19"
     },
     {
+      "index": 3,
       "video": "Video-17112014-022955.mp4",
       "second": 3.815,
       "crop": [
@@ -118,24 +89,10 @@
       ],
       "player": "right",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 364.4
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 992.7
-        }
-      }
+      "sha256": "a521d0bb7c750bba90455f5faba13e6d56e0585abc0a7b2493a49247d482a0a4"
     },
     {
+      "index": 4,
       "video": "Video-17112014-023522.mp4",
       "second": 3.565,
       "crop": [
@@ -146,24 +103,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9977,
-          "inference_ms": 379.7
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.998,
-          "inference_ms": 1029.3
-        }
-      }
+      "sha256": "8efdd2d5dc875c7587cf12424145bc235c5b1a350959a29385746194ea2936bd"
     },
     {
+      "index": 5,
       "video": "Video-17112014-023522.mp4",
       "second": 3.565,
       "crop": [
@@ -174,24 +117,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9886,
-          "inference_ms": 360.5
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9889,
-          "inference_ms": 995.4
-        }
-      }
+      "sha256": "66a83e8696732714d2fc83d4d58f0a105a5c1d068893929feb6dddf425700932"
     },
     {
+      "index": 6,
       "video": "Video-17112014-032746.mp4",
       "second": 3.815,
       "crop": [
@@ -202,24 +131,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9961,
-          "inference_ms": 350.6
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9963,
-          "inference_ms": 1036.0
-        }
-      }
+      "sha256": "e5c0aa6db85bcaf0d429e49f4c6ed30100fa24d4a7ac0a830c9d5445b4e9abc4"
     },
     {
+      "index": 7,
       "video": "Video-17112014-032746.mp4",
       "second": 3.815,
       "crop": [
@@ -230,24 +145,10 @@
       ],
       "player": "right",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.9971,
-          "inference_ms": 337.7
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.9975,
-          "inference_ms": 1041.9
-        }
-      }
+      "sha256": "d8d3a783051a304723557676d2a4486d4f01a98af10fd5cb1211d096131be4d5"
     },
     {
+      "index": 8,
       "video": "Video-17112014-033900.mp4",
       "second": 4.815,
       "crop": [
@@ -258,24 +159,10 @@
       ],
       "player": "left",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.995,
-          "inference_ms": 356.3
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.9956,
-          "inference_ms": 994.4
-        }
-      }
+      "sha256": "88807c17a965be8f35e735db5a3c4e05a8aa5afe8553df6f06eb0de8320cca34"
     },
     {
+      "index": 9,
       "video": "Video-17112014-033900.mp4",
       "second": 5.315,
       "crop": [
@@ -286,24 +173,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9947,
-          "inference_ms": 375.3
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9944,
-          "inference_ms": 998.0
-        }
-      }
+      "sha256": "f05567bf7a52c23bedfc1ac350b901882cf93f888d184627ba255a93805bc09b"
     },
     {
+      "index": 10,
       "video": "Video-17112014-043216.mp4",
       "second": 4.315,
       "crop": [
@@ -314,24 +187,10 @@
       ],
       "player": "left",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9966,
-          "inference_ms": 362.8
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9967,
-          "inference_ms": 1042.8
-        }
-      }
+      "sha256": "d5ac754220ca92176a86ee88bb5d2bf4ed9f04709779ee9ef9f679fc4499527b"
     },
     {
+      "index": 11,
       "video": "Video-17112014-043216.mp4",
       "second": 4.315,
       "crop": [
@@ -342,24 +201,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9995,
-          "inference_ms": 326.1
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9994,
-          "inference_ms": 980.9
-        }
-      }
+      "sha256": "2d4221f8bf319be8c08a570046f070d7fd4ae0605ce39a51bcc2144e72bbb878"
     },
     {
+      "index": 12,
       "video": "Video-17112014-045826.mp4",
       "second": 2.815,
       "crop": [
@@ -370,24 +215,10 @@
       ],
       "player": "left",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9974,
-          "inference_ms": 356.8
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9974,
-          "inference_ms": 1043.5
-        }
-      }
+      "sha256": "735e64279951d989d19ef217c5b157c35c563aa769ba006eb7f2394fa6569036"
     },
     {
+      "index": 13,
       "video": "Video-17112014-045826.mp4",
       "second": 2.815,
       "crop": [
@@ -398,24 +229,10 @@
       ],
       "player": "right",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.9959,
-          "inference_ms": 340.7
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 0.9956,
-          "inference_ms": 971.8
-        }
-      }
+      "sha256": "fc787054e37c56fcfbe7a23871f975e024f5468155bcd63e0418f7464f0c6725"
     },
     {
+      "index": 14,
       "video": "Video-24112014-014155.mp4",
       "second": 4.315,
       "crop": [
@@ -426,24 +243,10 @@
       ],
       "player": "left",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 360.5
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1030.4
-        }
-      }
+      "sha256": "50587cd3e72ef98887368a90506b717d99512780d94f74f3015121648aa806eb"
     },
     {
+      "index": 15,
       "video": "Video-24112014-014155.mp4",
       "second": 4.315,
       "crop": [
@@ -454,24 +257,10 @@
       ],
       "player": "right",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 355.3
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1054.6
-        }
-      }
+      "sha256": "1c39fdc48314311fb03688f73be0160b1215a7465c98b113ec869b2caec26b20"
     },
     {
+      "index": 16,
       "video": "Video-24112014-014226.mp4",
       "second": 3.815,
       "crop": [
@@ -482,24 +271,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 350.9
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1037.3
-        }
-      }
+      "sha256": "f8e5f794e508fd22195a0b5dcb1a0a5b364a5cdfac9912f6c9962698b8125e7b"
     },
     {
+      "index": 17,
       "video": "Video-24112014-014226.mp4",
       "second": 3.815,
       "crop": [
@@ -510,24 +285,10 @@
       ],
       "player": "right",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 332.3
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 957.5
-        }
-      }
+      "sha256": "1b5a7bee8f390ec70460560c87aebe9f49ab4c249825e566b3407d8b4415abea"
     },
     {
+      "index": 18,
       "video": "Video-24112014-015640.mp4",
       "second": 4.565,
       "crop": [
@@ -538,24 +299,10 @@
       ],
       "player": "left",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 354.1
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1020.6
-        }
-      }
+      "sha256": "e534b32bc13d83efc12a941e015618ecf6d49d3f2953980e81e1dc614992fe64"
     },
     {
+      "index": 19,
       "video": "Video-24112014-015640.mp4",
       "second": 4.565,
       "crop": [
@@ -566,24 +313,10 @@
       ],
       "player": "right",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9971,
-          "inference_ms": 369.7
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9975,
-          "inference_ms": 1029.2
-        }
-      }
+      "sha256": "8a77e706ba1b90097ff698d392c8c739e3f76fc9958d19d4be0d4743f0cc31c9"
     },
     {
+      "index": 20,
       "video": "Video-24112014-021418.mp4",
       "second": 3.815,
       "crop": [
@@ -594,24 +327,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9865,
-          "inference_ms": 354.3
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9868,
-          "inference_ms": 1004.2
-        }
-      }
+      "sha256": "fa76defc034c786d18f5666bf040c80565e3760da4c6a1b3cc90991f5bb360b1"
     },
     {
+      "index": 21,
       "video": "Video-24112014-021418.mp4",
       "second": 4.065,
       "crop": [
@@ -622,24 +341,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9935,
-          "inference_ms": 348.5
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9934,
-          "inference_ms": 994.8
-        }
-      }
+      "sha256": "1567ffe318aeb6240f79f9717f16383cbeac34f55443685d5a02c126331a4d02"
     },
     {
+      "index": 22,
       "video": "Video-24112014-021451.mp4",
       "second": 4.315,
       "crop": [
@@ -650,24 +355,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9979,
-          "inference_ms": 346.9
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9983,
-          "inference_ms": 1073.5
-        }
-      }
+      "sha256": "a37d0b61b98d6481923090007b4c3ff33524dc8a1831eeff98404e829660fbda"
     },
     {
+      "index": 23,
       "video": "Video-24112014-021451.mp4",
       "second": 4.315,
       "crop": [
@@ -678,24 +369,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 354.1
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1057.6
-        }
-      }
+      "sha256": "377d54dad008a58d9baf410b29a6a2c8c5ededbb3cbfb334c15abae2c6824fa5"
     },
     {
+      "index": 24,
       "video": "Video-24112014-024054.mp4",
       "second": 3.565,
       "crop": [
@@ -706,24 +383,10 @@
       ],
       "player": "left",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9883,
-          "inference_ms": 399.4
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9883,
-          "inference_ms": 1016.1
-        }
-      }
+      "sha256": "20ae40a3bb9551d169496bc6a8df284b664fda1f6d8eb7753b4da59b76c654e1"
     },
     {
+      "index": 25,
       "video": "Video-24112014-024054.mp4",
       "second": 3.565,
       "crop": [
@@ -734,24 +397,10 @@
       ],
       "player": "right",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9886,
-          "inference_ms": 375.0
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9885,
-          "inference_ms": 989.5
-        }
-      }
+      "sha256": "ec25d1b2d79e680892a2c113461b5762054ecabd2506862863af09fcbf423340"
     },
     {
+      "index": 26,
       "video": "Video-24112014-024054.mp4",
       "second": 5.065,
       "crop": [
@@ -762,24 +411,10 @@
       ],
       "player": "left",
       "expected": "rock",
-      "results": {
-        "coreai-ane": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9968,
-          "inference_ms": 348.8
-        },
-        "mlx": {
-          "recognized": "rock",
-          "mac_move": "paper",
-          "outcome": "win",
-          "hand_box_confidence": 0.9968,
-          "inference_ms": 985.3
-        }
-      }
+      "sha256": "eed83f0f771d9ccf7e08d03644347f0cbae2f5d594c44995c49d6cadf2ca3926"
     },
     {
+      "index": 27,
       "video": "Video-24112014-024054.mp4",
       "second": 5.065,
       "crop": [
@@ -790,24 +425,10 @@
       ],
       "player": "right",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9804,
-          "inference_ms": 356.9
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 0.9812,
-          "inference_ms": 1041.5
-        }
-      }
+      "sha256": "0ad40da1924366cd919d359e93cbd6fb162d5b78ba8d81666572c2088cefdbf1"
     },
     {
+      "index": 28,
       "video": "Video-24112014-033347.mp4",
       "second": 4.065,
       "crop": [
@@ -818,24 +439,10 @@
       ],
       "player": "left",
       "expected": "scissors",
-      "results": {
-        "coreai-ane": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 351.8
-        },
-        "mlx": {
-          "recognized": "scissors",
-          "mac_move": "rock",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1005.4
-        }
-      }
+      "sha256": "409c1bb98e3d667f32017f30fa71b7db70ef4bf12592ec92a546e3503d8bae25"
     },
     {
+      "index": 29,
       "video": "Video-24112014-033347.mp4",
       "second": 4.065,
       "crop": [
@@ -846,22 +453,364 @@
       ],
       "player": "right",
       "expected": "paper",
-      "results": {
-        "coreai-ane": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 375.9
-        },
-        "mlx": {
-          "recognized": "paper",
-          "mac_move": "scissors",
-          "outcome": "win",
-          "hand_box_confidence": 1.0,
-          "inference_ms": 1079.6
-        }
-      }
+      "sha256": "4f44a2cc75bc885a8d80c61007e2d89c4551199683214192740cce63210ca07d"
     }
-  ]
+  ],
+  "summary": {
+    "mlx": {
+      "classifications_stable_30": 30,
+      "outcomes": {
+        "win": 58,
+        "draw": 2
+      },
+      "boxes_at_70_percent": 60,
+      "p50_inference_ms": 492.8,
+      "p90_inference_ms": 512.0,
+      "p50_http_ms": 494.2,
+      "p90_http_ms": 513.2,
+      "decisions_per_second": 2.003,
+      "input_tokens": 404,
+      "first_request_ms": 556.674,
+      "worker_startup_s": null,
+      "cpu_active": 4.1,
+      "gpu_active": 99.1,
+      "ane_active": 0.0,
+      "power_samples": 44,
+      "estimated_total_power_watts": 39.59,
+      "estimated_total_joules_per_decision": 19.769
+    },
+    "coreai-gpu": {
+      "classifications_stable_30": 30,
+      "outcomes": {
+        "win": 58,
+        "draw": 2
+      },
+      "boxes_at_70_percent": 60,
+      "p50_inference_ms": 630.0,
+      "p90_inference_ms": 694.8,
+      "p50_http_ms": 631.1,
+      "p90_http_ms": 695.8,
+      "decisions_per_second": 1.535,
+      "input_tokens": 404,
+      "first_request_ms": 8829.085,
+      "worker_startup_s": 8.2,
+      "cpu_active": 11.1,
+      "gpu_active": 98.7,
+      "ane_active": 0.0,
+      "power_samples": 57,
+      "estimated_total_power_watts": 34.83,
+      "estimated_total_joules_per_decision": 22.683
+    },
+    "coreai-ane": {
+      "classifications_stable_30": 30,
+      "outcomes": {
+        "win": 58,
+        "draw": 2
+      },
+      "boxes_at_70_percent": 60,
+      "p50_inference_ms": 241.8,
+      "p90_inference_ms": 245.7,
+      "p50_http_ms": 242.8,
+      "p90_http_ms": 246.8,
+      "decisions_per_second": 4.097,
+      "input_tokens": 404,
+      "first_request_ms": 20227.615,
+      "worker_startup_s": 20.0,
+      "cpu_active": 12.7,
+      "gpu_active": 15.1,
+      "ane_active": 0.0,
+      "power_samples": 18,
+      "estimated_total_power_watts": 16.468,
+      "estimated_total_joules_per_decision": 4.02
+    }
+  },
+  "agreement": {
+    "same_choice_all_backends": 30,
+    "unique_frames": 30
+  },
+  "power_method": "mactop v2.1.6 total_power estimate. Includes background activity and has no idle subtraction. ANE activity and power component counters emitted zero even during Core AI Neural Engine runs, so component-specific numbers are not interpreted.",
+  "runs": {
+    "mlx": [
+      {
+        "pass": 1,
+        "elapsed_s": 14.7736,
+        "power": {
+          "samples": 22,
+          "watts": 38.977,
+          "cpu_watts": 1.347,
+          "gpu_watts": 18.507,
+          "ane_watts": 0.0,
+          "cpu_active": 4.111,
+          "gpu_active": 99.13,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6008987368838418, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 489.5, "http_ms": 490.384, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4681808806142241, "box_found": 0.9921510249885355, "box_shown_at_70_percent": true, "inference_ms": 494.7, "http_ms": 496.023, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9908108202210038, "box_found": 0.9975733075610514, "box_shown_at_70_percent": true, "inference_ms": 489.8, "http_ms": 490.898, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.6948628866705131, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 492.4, "http_ms": 493.817, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9854351129847875, "box_found": 0.9979627817633199, "box_shown_at_70_percent": true, "inference_ms": 500.5, "http_ms": 502.535, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7474041687138445, "box_found": 0.9888846631665515, "box_shown_at_70_percent": true, "inference_ms": 492.2, "http_ms": 493.276, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9697874937862091, "box_found": 0.9962987907862259, "box_shown_at_70_percent": true, "inference_ms": 491.7, "http_ms": 492.72, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8975548064439943, "box_found": 0.9974674819156563, "box_shown_at_70_percent": true, "inference_ms": 490.0, "http_ms": 491.052, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8673812885814798, "box_found": 0.9956048880363898, "box_shown_at_70_percent": true, "inference_ms": 490.1, "http_ms": 491.03, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7694125274823191, "box_found": 0.994429120399162, "box_shown_at_70_percent": true, "inference_ms": 492.0, "http_ms": 493.038, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6786173588535789, "box_found": 0.9967156744983932, "box_shown_at_70_percent": true, "inference_ms": 490.4, "http_ms": 491.497, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8965922257114274, "box_found": 0.9993987441183507, "box_shown_at_70_percent": true, "inference_ms": 490.6, "http_ms": 491.746, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6504029407818088, "box_found": 0.9974212583274584, "box_shown_at_70_percent": true, "inference_ms": 491.6, "http_ms": 492.566, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8158791342323825, "box_found": 0.9956494391314499, "box_shown_at_70_percent": true, "inference_ms": 490.3, "http_ms": 491.217, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7815465586107906, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 489.9, "http_ms": 490.91, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7960216811630986, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 489.9, "http_ms": 491.013, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6419313247850876, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 490.3, "http_ms": 491.251, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9927660227365227, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 490.3, "http_ms": 491.61, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8208190108073742, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 490.1, "http_ms": 491.352, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9481299663167572, "box_found": 0.9975207470405049, "box_shown_at_70_percent": true, "inference_ms": 491.9, "http_ms": 492.98, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9874479138877058, "box_found": 0.9868215645078076, "box_shown_at_70_percent": true, "inference_ms": 490.7, "http_ms": 491.631, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8678557490190271, "box_found": 0.9933678460225699, "box_shown_at_70_percent": true, "inference_ms": 490.2, "http_ms": 491.448, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.981445263884149, "box_found": 0.9982585649057031, "box_shown_at_70_percent": true, "inference_ms": 491.0, "http_ms": 492.345, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8267672162653908, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 490.5, "http_ms": 491.598, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8720751009063565, "box_found": 0.9882529433198012, "box_shown_at_70_percent": true, "inference_ms": 489.8, "http_ms": 491.088, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.928468120630742, "box_found": 0.9885302761813879, "box_shown_at_70_percent": true, "inference_ms": 490.1, "http_ms": 491.312, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7749331815589925, "box_found": 0.9968234790169812, "box_shown_at_70_percent": true, "inference_ms": 490.8, "http_ms": 491.796, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9716423160117373, "box_found": 0.98118319516875, "box_shown_at_70_percent": true, "inference_ms": 489.8, "http_ms": 491.066, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6870372004641347, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 496.4, "http_ms": 497.671, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8688709198961077, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 490.2, "http_ms": 491.195, "input_tokens": 404, "startup_s": null}
+        ]
+      },
+      {
+        "pass": 2,
+        "elapsed_s": 15.1867,
+        "power": {
+          "samples": 22,
+          "watts": 40.186,
+          "cpu_watts": 1.324,
+          "gpu_watts": 18.406,
+          "ane_watts": 0.0,
+          "cpu_active": 3.996,
+          "gpu_active": 99.034,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6008987368838418, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 510.0, "http_ms": 511.18, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4681808806142241, "box_found": 0.9921510249885355, "box_shown_at_70_percent": true, "inference_ms": 507.8, "http_ms": 509.105, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9908108202210038, "box_found": 0.9975733075610514, "box_shown_at_70_percent": true, "inference_ms": 506.1, "http_ms": 507.183, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.6948628866705131, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 496.7, "http_ms": 497.644, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9854351129847875, "box_found": 0.9979627817633199, "box_shown_at_70_percent": true, "inference_ms": 511.6, "http_ms": 512.578, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7474041687138445, "box_found": 0.9888846631665515, "box_shown_at_70_percent": true, "inference_ms": 508.4, "http_ms": 509.645, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9697874937862091, "box_found": 0.9962987907862259, "box_shown_at_70_percent": true, "inference_ms": 512.2, "http_ms": 513.412, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8975548064439943, "box_found": 0.9974674819156563, "box_shown_at_70_percent": true, "inference_ms": 492.2, "http_ms": 493.307, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8673812885814798, "box_found": 0.9956048880363898, "box_shown_at_70_percent": true, "inference_ms": 512.7, "http_ms": 513.892, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7694125274823191, "box_found": 0.994429120399162, "box_shown_at_70_percent": true, "inference_ms": 490.5, "http_ms": 491.894, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6786173588535789, "box_found": 0.9967156744983932, "box_shown_at_70_percent": true, "inference_ms": 493.2, "http_ms": 494.551, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8965922257114274, "box_found": 0.9993987441183507, "box_shown_at_70_percent": true, "inference_ms": 510.8, "http_ms": 512.1, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6504029407818088, "box_found": 0.9974212583274584, "box_shown_at_70_percent": true, "inference_ms": 493.6, "http_ms": 495.014, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8158791342323825, "box_found": 0.9956494391314499, "box_shown_at_70_percent": true, "inference_ms": 514.2, "http_ms": 515.4, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7815465586107906, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 512.0, "http_ms": 513.225, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7960216811630986, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 492.4, "http_ms": 493.627, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6419313247850876, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 512.0, "http_ms": 513.218, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9927660227365227, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 513.1, "http_ms": 514.113, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8208190108073742, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 502.9, "http_ms": 504.077, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9481299663167572, "box_found": 0.9975207470405049, "box_shown_at_70_percent": true, "inference_ms": 497.2, "http_ms": 499.042, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9874479138877058, "box_found": 0.9868215645078076, "box_shown_at_70_percent": true, "inference_ms": 506.0, "http_ms": 507.247, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8678557490190271, "box_found": 0.9933678460225699, "box_shown_at_70_percent": true, "inference_ms": 503.7, "http_ms": 504.792, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.981445263884149, "box_found": 0.9982585649057031, "box_shown_at_70_percent": true, "inference_ms": 507.6, "http_ms": 508.647, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8267672162653908, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 509.6, "http_ms": 510.784, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8720751009063565, "box_found": 0.9882529433198012, "box_shown_at_70_percent": true, "inference_ms": 499.8, "http_ms": 501.182, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.928468120630742, "box_found": 0.9885302761813879, "box_shown_at_70_percent": true, "inference_ms": 498.3, "http_ms": 499.37, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7749331815589925, "box_found": 0.9968234790169812, "box_shown_at_70_percent": true, "inference_ms": 507.8, "http_ms": 508.774, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9716423160117373, "box_found": 0.98118319516875, "box_shown_at_70_percent": true, "inference_ms": 501.1, "http_ms": 502.181, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6870372004641347, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 514.6, "http_ms": 515.618, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8688709198961077, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 510.9, "http_ms": 512.381, "input_tokens": 404, "startup_s": null}
+        ]
+      }
+    ],
+    "coreai-gpu": [
+      {
+        "pass": 1,
+        "elapsed_s": 20.0671,
+        "power": {
+          "samples": 30,
+          "watts": 34.845,
+          "cpu_watts": 2.276,
+          "gpu_watts": 16.306,
+          "ane_watts": 0.0,
+          "cpu_active": 12.474,
+          "gpu_active": 99.003,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.5893907347089147, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 627.0, "http_ms": 628.364, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4579559485571035, "box_found": 0.9918291783535531, "box_shown_at_70_percent": true, "inference_ms": 627.1, "http_ms": 628.256, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9906550895392249, "box_found": 0.9973509268537514, "box_shown_at_70_percent": true, "inference_ms": 633.6, "http_ms": 634.657, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.6975904242368721, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 626.2, "http_ms": 627.499, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9852488463887065, "box_found": 0.9977482895522679, "box_shown_at_70_percent": true, "inference_ms": 629.9, "http_ms": 630.876, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7454997612053819, "box_found": 0.9885302761813879, "box_shown_at_70_percent": true, "inference_ms": 769.5, "http_ms": 770.528, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9697760163652887, "box_found": 0.9959520935731769, "box_shown_at_70_percent": true, "inference_ms": 629.5, "http_ms": 630.36, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.897503070343716, "box_found": 0.9971820672564555, "box_shown_at_70_percent": true, "inference_ms": 629.3, "http_ms": 630.265, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8678269590699703, "box_found": 0.9954002168041896, "box_shown_at_70_percent": true, "inference_ms": 829.7, "http_ms": 830.596, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.768833227569926, "box_found": 0.9941565126398064, "box_shown_at_70_percent": true, "inference_ms": 627.7, "http_ms": 628.746, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6733146989412621, "box_found": 0.996549309037414, "box_shown_at_70_percent": true, "inference_ms": 630.1, "http_ms": 631.056, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8931275780094898, "box_found": 0.9994457580530158, "box_shown_at_70_percent": true, "inference_ms": 826.7, "http_ms": 827.695, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6516104709069412, "box_found": 0.9971491331827532, "box_shown_at_70_percent": true, "inference_ms": 748.4, "http_ms": 749.379, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8171030072423106, "box_found": 0.9953537882817415, "box_shown_at_70_percent": true, "inference_ms": 830.9, "http_ms": 831.951, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7850974438379797, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 636.9, "http_ms": 637.904, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7956692067689751, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 637.0, "http_ms": 638.117, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6397438390735669, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 628.5, "http_ms": 629.853, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9927122248257545, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 627.6, "http_ms": 628.624, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8144323959248472, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 626.7, "http_ms": 627.991, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9472008451467041, "box_found": 0.9973033665004845, "box_shown_at_70_percent": true, "inference_ms": 628.1, "http_ms": 629.103, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9871728058909955, "box_found": 0.9865484426762324, "box_shown_at_70_percent": true, "inference_ms": 627.1, "http_ms": 628.084, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.86575874947979, "box_found": 0.9931816197671665, "box_shown_at_70_percent": true, "inference_ms": 688.8, "http_ms": 689.81, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9810709954343175, "box_found": 0.9980161063477774, "box_shown_at_70_percent": true, "inference_ms": 832.6, "http_ms": 833.608, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.827403830804141, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 633.5, "http_ms": 634.426, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8682216543508966, "box_found": 0.9882529433198012, "box_shown_at_70_percent": true, "inference_ms": 630.4, "http_ms": 631.43, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.9257969174937949, "box_found": 0.9883180850568809, "box_shown_at_70_percent": true, "inference_ms": 626.3, "http_ms": 627.365, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7689287876302924, "box_found": 0.9967156744983932, "box_shown_at_70_percent": true, "inference_ms": 636.7, "http_ms": 637.736, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9712214056729375, "box_found": 0.98118319516875, "box_shown_at_70_percent": true, "inference_ms": 634.8, "http_ms": 635.802, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6883963960466991, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 632.6, "http_ms": 633.606, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8702341954491507, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 641.1, "http_ms": 642.202, "input_tokens": 404, "startup_s": null}
+        ]
+      },
+      {
+        "pass": 2,
+        "elapsed_s": 19.0083,
+        "power": {
+          "samples": 27,
+          "watts": 34.815,
+          "cpu_watts": 1.816,
+          "gpu_watts": 16.637,
+          "ane_watts": 0.0,
+          "cpu_active": 9.744,
+          "gpu_active": 98.281,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.5893907347089147, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 634.5, "http_ms": 635.637, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4579559485571035, "box_found": 0.9918291783535531, "box_shown_at_70_percent": true, "inference_ms": 630.9, "http_ms": 631.891, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9906550895392249, "box_found": 0.9973509268537514, "box_shown_at_70_percent": true, "inference_ms": 626.3, "http_ms": 627.283, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.6975904242368721, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 626.1, "http_ms": 627.145, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9852488463887065, "box_found": 0.9977482895522679, "box_shown_at_70_percent": true, "inference_ms": 651.7, "http_ms": 653.109, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7454997612053819, "box_found": 0.9885302761813879, "box_shown_at_70_percent": true, "inference_ms": 627.3, "http_ms": 628.255, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9697760163652887, "box_found": 0.9959520935731769, "box_shown_at_70_percent": true, "inference_ms": 626.3, "http_ms": 627.623, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.897503070343716, "box_found": 0.9971820672564555, "box_shown_at_70_percent": true, "inference_ms": 652.8, "http_ms": 653.925, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8678269590699703, "box_found": 0.9954002168041896, "box_shown_at_70_percent": true, "inference_ms": 643.7, "http_ms": 644.905, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.768833227569926, "box_found": 0.9941565126398064, "box_shown_at_70_percent": true, "inference_ms": 644.7, "http_ms": 645.813, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6733146989412621, "box_found": 0.996549309037414, "box_shown_at_70_percent": true, "inference_ms": 628.0, "http_ms": 629.111, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8931275780094898, "box_found": 0.9994457580530158, "box_shown_at_70_percent": true, "inference_ms": 632.3, "http_ms": 633.281, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6516104709069412, "box_found": 0.9971491331827532, "box_shown_at_70_percent": true, "inference_ms": 630.0, "http_ms": 631.069, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8171030072423106, "box_found": 0.9953537882817415, "box_shown_at_70_percent": true, "inference_ms": 627.0, "http_ms": 628.063, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7850974438379797, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 626.0, "http_ms": 627.347, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7956692067689751, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 647.6, "http_ms": 649.985, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6397438390735669, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 629.8, "http_ms": 631.356, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9927122248257545, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 643.2, "http_ms": 644.835, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8144323959248472, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 625.9, "http_ms": 626.918, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9472008451467041, "box_found": 0.9973033665004845, "box_shown_at_70_percent": true, "inference_ms": 625.5, "http_ms": 626.465, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9871728058909955, "box_found": 0.9865484426762324, "box_shown_at_70_percent": true, "inference_ms": 626.1, "http_ms": 627.016, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.86575874947979, "box_found": 0.9931816197671665, "box_shown_at_70_percent": true, "inference_ms": 626.5, "http_ms": 627.506, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9810709954343175, "box_found": 0.9980161063477774, "box_shown_at_70_percent": true, "inference_ms": 626.8, "http_ms": 627.824, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.827403830804141, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 627.6, "http_ms": 628.576, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8682216543508966, "box_found": 0.9882529433198012, "box_shown_at_70_percent": true, "inference_ms": 627.0, "http_ms": 627.972, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.9257969174937949, "box_found": 0.9883180850568809, "box_shown_at_70_percent": true, "inference_ms": 625.6, "http_ms": 626.611, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7689287876302924, "box_found": 0.9967156744983932, "box_shown_at_70_percent": true, "inference_ms": 634.2, "http_ms": 635.161, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9712214056729375, "box_found": 0.98118319516875, "box_shown_at_70_percent": true, "inference_ms": 635.2, "http_ms": 636.137, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6883963960466991, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 636.0, "http_ms": 638.345, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8702341954491507, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 626.6, "http_ms": 627.74, "input_tokens": 404, "startup_s": null}
+        ]
+      }
+    ],
+    "coreai-ane": [
+      {
+        "pass": 1,
+        "elapsed_s": 7.3647,
+        "power": {
+          "samples": 9,
+          "watts": 17.89,
+          "cpu_watts": 2.66,
+          "gpu_watts": 0.166,
+          "ane_watts": 0.0,
+          "cpu_active": 13.858,
+          "gpu_active": 19.484,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.5887980741538923, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 240.9, "http_ms": 241.845, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4478171098562844, "box_found": 0.9917927588266205, "box_shown_at_70_percent": true, "inference_ms": 263.9, "http_ms": 265.65, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9906005806541347, "box_found": 0.9974674819156563, "box_shown_at_70_percent": true, "inference_ms": 244.5, "http_ms": 245.468, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7075948695721648, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 240.5, "http_ms": 241.505, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9861147534323544, "box_found": 0.9977124915512294, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.129, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7395602365528492, "box_found": 0.9885924741667286, "box_shown_at_70_percent": true, "inference_ms": 241.6, "http_ms": 242.574, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9725727099859065, "box_found": 0.9961384041186296, "box_shown_at_70_percent": true, "inference_ms": 243.1, "http_ms": 244.162, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.9014639292511085, "box_found": 0.9971491331827532, "box_shown_at_70_percent": true, "inference_ms": 245.2, "http_ms": 246.18, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8609538239119104, "box_found": 0.9950188636164858, "box_shown_at_70_percent": true, "inference_ms": 241.8, "http_ms": 242.807, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7716299283754152, "box_found": 0.9947174906697994, "box_shown_at_70_percent": true, "inference_ms": 243.9, "http_ms": 244.973, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.659504537224312, "box_found": 0.9965867699607759, "box_shown_at_70_percent": true, "inference_ms": 247.7, "http_ms": 248.867, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8933768049552924, "box_found": 0.9995365856787529, "box_shown_at_70_percent": true, "inference_ms": 240.9, "http_ms": 241.864, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6506667805396936, "box_found": 0.9973588010002112, "box_shown_at_70_percent": true, "inference_ms": 244.8, "http_ms": 245.908, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8137833473252726, "box_found": 0.9959309999504823, "box_shown_at_70_percent": true, "inference_ms": 240.9, "http_ms": 241.855, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7889556705140546, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 243.2, "http_ms": 244.169, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7915360324260654, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 262.2, "http_ms": 263.556, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6278647116979064, "box_found": 0.999995825359053, "box_shown_at_70_percent": true, "inference_ms": 241.8, "http_ms": 242.775, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9926871158697022, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 243.0, "http_ms": 243.91, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8155416533241266, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 240.3, "http_ms": 241.219, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9487142629257408, "box_found": 0.9971325721637619, "box_shown_at_70_percent": true, "inference_ms": 245.7, "http_ms": 246.825, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9877243650792935, "box_found": 0.9864926796369922, "box_shown_at_70_percent": true, "inference_ms": 241.9, "http_ms": 242.94, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8576244003221056, "box_found": 0.9935199100276462, "box_shown_at_70_percent": true, "inference_ms": 247.9, "http_ms": 248.919, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9815227785181357, "box_found": 0.9978881186778198, "box_shown_at_70_percent": true, "inference_ms": 240.8, "http_ms": 241.838, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8255947867716651, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 242.1, "http_ms": 243.072, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8787376851878329, "box_found": 0.9882964481578804, "box_shown_at_70_percent": true, "inference_ms": 245.9, "http_ms": 247.038, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.9276464347969738, "box_found": 0.9886335712552939, "box_shown_at_70_percent": true, "inference_ms": 241.7, "http_ms": 242.814, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7716905374902562, "box_found": 0.9967518817141553, "box_shown_at_70_percent": true, "inference_ms": 245.7, "http_ms": 246.81, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9724651879324465, "box_found": 0.9804390011327299, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.21, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6860396267911788, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 244.2, "http_ms": 245.198, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8733920963370827, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 243.4, "http_ms": 244.41, "input_tokens": 404, "startup_s": null}
+        ]
+      },
+      {
+        "pass": 2,
+        "elapsed_s": 7.2808,
+        "power": {
+          "samples": 9,
+          "watts": 15.03,
+          "cpu_watts": 2.137,
+          "gpu_watts": 0.041,
+          "ane_watts": 0.0,
+          "cpu_active": 11.585,
+          "gpu_active": 10.736,
+          "ane_active": 0.0
+        },
+        "samples": [
+          {"index": 0, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.5887980741538923, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.6, "http_ms": 242.652, "input_tokens": 404, "startup_s": null},
+          {"index": 1, "expected": "rock", "recognized": "scissors", "mac_move": "rock", "outcome": "draw", "confidence": 0.4478171098562844, "box_found": 0.9917927588266205, "box_shown_at_70_percent": true, "inference_ms": 242.8, "http_ms": 243.694, "input_tokens": 404, "startup_s": null},
+          {"index": 2, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9906005806541347, "box_found": 0.9974674819156563, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.148, "input_tokens": 404, "startup_s": null},
+          {"index": 3, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7075948695721648, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 242.5, "http_ms": 243.496, "input_tokens": 404, "startup_s": null},
+          {"index": 4, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9861147534323544, "box_found": 0.9977124915512294, "box_shown_at_70_percent": true, "inference_ms": 244.1, "http_ms": 245.073, "input_tokens": 404, "startup_s": null},
+          {"index": 5, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7395602365528492, "box_found": 0.9885924741667286, "box_shown_at_70_percent": true, "inference_ms": 246.0, "http_ms": 247.094, "input_tokens": 404, "startup_s": null},
+          {"index": 6, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9725727099859065, "box_found": 0.9961384041186296, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.179, "input_tokens": 404, "startup_s": null},
+          {"index": 7, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.9014639292511085, "box_found": 0.9971491331827532, "box_shown_at_70_percent": true, "inference_ms": 241.9, "http_ms": 242.943, "input_tokens": 404, "startup_s": null},
+          {"index": 8, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8609538239119104, "box_found": 0.9950188636164858, "box_shown_at_70_percent": true, "inference_ms": 240.7, "http_ms": 241.566, "input_tokens": 404, "startup_s": null},
+          {"index": 9, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7716299283754152, "box_found": 0.9947174906697994, "box_shown_at_70_percent": true, "inference_ms": 240.9, "http_ms": 241.948, "input_tokens": 404, "startup_s": null},
+          {"index": 10, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.659504537224312, "box_found": 0.9965867699607759, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.181, "input_tokens": 404, "startup_s": null},
+          {"index": 11, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8933768049552924, "box_found": 0.9995365856787529, "box_shown_at_70_percent": true, "inference_ms": 241.0, "http_ms": 241.998, "input_tokens": 404, "startup_s": null},
+          {"index": 12, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.6506667805396936, "box_found": 0.9973588010002112, "box_shown_at_70_percent": true, "inference_ms": 241.2, "http_ms": 242.191, "input_tokens": 404, "startup_s": null},
+          {"index": 13, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8137833473252726, "box_found": 0.9959309999504823, "box_shown_at_70_percent": true, "inference_ms": 241.1, "http_ms": 242.08, "input_tokens": 404, "startup_s": null},
+          {"index": 14, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7889556705140546, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.3, "http_ms": 242.292, "input_tokens": 404, "startup_s": null},
+          {"index": 15, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.7915360324260654, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.6, "http_ms": 242.573, "input_tokens": 404, "startup_s": null},
+          {"index": 16, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6278647116979064, "box_found": 0.999995825359053, "box_shown_at_70_percent": true, "inference_ms": 242.6, "http_ms": 243.718, "input_tokens": 404, "startup_s": null},
+          {"index": 17, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9926871158697022, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.3, "http_ms": 242.282, "input_tokens": 404, "startup_s": null},
+          {"index": 18, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8155416533241266, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.8, "http_ms": 242.789, "input_tokens": 404, "startup_s": null},
+          {"index": 19, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9487142629257408, "box_found": 0.9971325721637619, "box_shown_at_70_percent": true, "inference_ms": 240.1, "http_ms": 240.973, "input_tokens": 404, "startup_s": null},
+          {"index": 20, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9877243650792935, "box_found": 0.9864926796369922, "box_shown_at_70_percent": true, "inference_ms": 242.3, "http_ms": 243.319, "input_tokens": 404, "startup_s": null},
+          {"index": 21, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8576244003221056, "box_found": 0.9935199100276462, "box_shown_at_70_percent": true, "inference_ms": 240.1, "http_ms": 241.009, "input_tokens": 404, "startup_s": null},
+          {"index": 22, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9815227785181357, "box_found": 0.9978881186778198, "box_shown_at_70_percent": true, "inference_ms": 241.5, "http_ms": 242.527, "input_tokens": 404, "startup_s": null},
+          {"index": 23, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8255947867716651, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 241.8, "http_ms": 242.694, "input_tokens": 404, "startup_s": null},
+          {"index": 24, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.8787376851878329, "box_found": 0.9882964481578804, "box_shown_at_70_percent": true, "inference_ms": 240.7, "http_ms": 241.62, "input_tokens": 404, "startup_s": null},
+          {"index": 25, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.9276464347969738, "box_found": 0.9886335712552939, "box_shown_at_70_percent": true, "inference_ms": 242.8, "http_ms": 243.829, "input_tokens": 404, "startup_s": null},
+          {"index": 26, "expected": "rock", "recognized": "rock", "mac_move": "paper", "outcome": "win", "confidence": 0.7716905374902562, "box_found": 0.9967518817141553, "box_shown_at_70_percent": true, "inference_ms": 240.9, "http_ms": 241.801, "input_tokens": 404, "startup_s": null},
+          {"index": 27, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.9724651879324465, "box_found": 0.9804390011327299, "box_shown_at_70_percent": true, "inference_ms": 241.1, "http_ms": 242.043, "input_tokens": 404, "startup_s": null},
+          {"index": 28, "expected": "scissors", "recognized": "scissors", "mac_move": "rock", "outcome": "win", "confidence": 0.6860396267911788, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 240.8, "http_ms": 241.971, "input_tokens": 404, "startup_s": null},
+          {"index": 29, "expected": "paper", "recognized": "paper", "mac_move": "scissors", "outcome": "win", "confidence": 0.8733920963370827, "box_found": 1.0, "box_shown_at_70_percent": true, "inference_ms": 242.1, "http_ms": 243.154, "input_tokens": 404, "startup_s": null}
+        ]
+      }
+    ]
+  }
 }

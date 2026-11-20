@@ -2,19 +2,27 @@
 
 Show one hand to the webcam. D1 identifies rock, paper, scissors, or no move and draws a box around the hand. The Mac sees your move first and plays the counter. The large symbol is the Mac's move, and the four bars show D1's probabilities for your hand.
 
-[d1-2B](https://huggingface.co/LiquidAI/d1-2B) by Liquid AI classifies and locates the hand in one forward pass with **0 generated tokens**. The browser and model run locally on `127.0.0.1`.
+Liquid AI’s D1-2B classifies and locates the hand in one forward pass with **0 generated tokens**. The browser and model run locally on `127.0.0.1`. This demo builds on Ivan Fioravanti’s original gestures project. [D1-2B](https://huggingface.co/LiquidAI/d1-2B) · [Original project](https://github.com/ivanfioravanti/mlx-d1-gestures)
 
 ## Run it
 
-Requires Apple Silicon and [uv](https://docs.astral.sh/uv/).
+Requires a Mac with Apple Silicon and uv. MLX is the default backend. [Install uv](https://docs.astral.sh/uv/)
 
 ```bash
 ./start.sh
 ```
 
-It starts `decide.py` and opens the browser once the server is ready. The default is <http://127.0.0.1:8050>. If that port is occupied, the server chooses a free local port. Ctrl-C stops the server. Press **Start camera** and allow it. The first run downloads the model (2.2 GB). To start manually, run `uv run decide.py` and use the URL it prints.
+The first run installs the locked dependencies and downloads the MLX model (about 2.2 GB). The script opens the browser when the model is ready. The server uses port 8050 when available and picks a free local port otherwise. Ctrl-C stops the server and its workers.
 
-Keep one hand close to the camera and show a fist, an open palm, or two fingers. Use **Load video** to replay a local recording. Once the packages and model weights are cached, start with `UV_OFFLINE=1 HF_HUB_OFFLINE=1 ./start.sh` to run without a download.
+Press **Start camera**, grant camera access, and show a fist, an open palm, or two fingers close to the camera. **Load video** replays a local recording.
+
+To start without opening the browser, run `uv run --locked decide.py` and use the printed URL. With `DECIDE_PORT=8060 ./start.sh`, the server uses port 8060 or exits with a clear error if it is occupied.
+
+Use each backend once online to cache its model before going offline. Start the cached app with the offline settings below.
+
+```bash
+UV_OFFLINE=1 HF_HUB_OFFLINE=1 ./start.sh
+```
 
 ## How it works
 
@@ -24,16 +32,15 @@ Keep one hand close to the camera and show a fist, an open palm, or two fingers.
 
 ## Recorded-throw benchmark on Apple M4
 
-The benchmark uses 30 hand reveals from 15 filmed rounds. Each trial sends one manually labeled frame cropped to the selected player's hand. Latency is the server's `ms` field, including preprocessing and D1 inference. Each backend receives five warm-up frames before the recorded trials. [ShakeFive2 research footage](https://www.projects.science.uu.nl/shakefive/)
+The same 30 hand reveals from 15 filmed rounds were replayed twice per backend on an Apple M4 running macOS 27.0.1. Each pass followed five warm-up requests. The server’s latency includes preprocessing, model inference and readout. The table excludes worker startup and video playback. [ShakeFive2 research footage](https://www.projects.science.uu.nl/shakefive/)
 
-| Backend | Wins | Hand boxes at 70% | Median ms per decision | P90 ms |
-| --- | ---: | ---: | ---: | ---: |
-| Core AI Neural Engine | 29/30 | 30/30 | 354.8 | 375.4 |
-| MLX | 29/30 | 30/30 | 1018.4 | 1054.9 |
+| Backend | Wins per pass | Hand boxes at 70% | Median (ms) | P90 (ms) | Decisions/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Core AI Neural Engine | 29/30 | 30/30 | 241.8 | 245.7 | 4.10 |
+| MLX | 29/30 | 30/30 | 492.8 | 512.0 | 2.00 |
+| Core AI GPU | 29/30 | 30/30 | 630.0 | 694.8 | 1.54 |
 
-[Per-throw results](benchmarks/m4-recorded-throws.json)
-
-Select **Core AI Neural Engine** for the measured faster mode on this M4. The benchmark times decisions on visible moves. Live footage can be used to measure the delay from a player's reveal to the rendered counter.
+All three backends returned the same labels, including the one misread that produced a draw. The recorded results include the frame manifest, timed requests and whole-Mac power estimates. [Per-throw results](benchmarks/m4-recorded-throws.json)
 
 ### Your own questions
 
@@ -48,7 +55,7 @@ Open **Questions** on the page to ask d1 something else, on the camera or a vide
 | Box | where the thing is, and whether it is there | 5 |
 | Boxes | every one of them, up to a max: where, and how many | 5 per box (default 3) |
 
-A box is drawn, and counted, only when d1 is at least 70% sure it is there (d1 itself keeps those from 50%); change it under **Questions**, and the app uses 70%. A box named `X_box` goes with the question `X`: one tile, and the box is labelled with `X`'s answer, as the hand and face are by default. **save as…** keeps a set under a name in your browser (listed under *Saved* in the menu, **delete** removes it); your last edited set stays under *Custom* while you look at the presets. The set is kept in your browser, and **copy link** gives a link that opens the page with it. Up to 12 questions; `POST /questions` with `{"questions": {...}}` does the same without the page, and `GET /questions` returns the active set. The Core AI backends answer any set that fits their export (see below): the panel shows how much of it a set uses, and a set too big for it runs on MLX only. The default questions are `QUESTIONS` in `decide.py`.
+A box is drawn, and counted, only when d1 is at least 70% sure it is there (d1 itself keeps those from 50%); change the threshold under **Questions**. A box named `X_box` goes with the question `X`: one tile, and the box is labelled with `X`'s answer, as the hand and face are by default. **save as…** keeps a set under a name in your browser (listed under *Saved* in the menu, **delete** removes it); your last edited set stays under *Custom* while you look at the presets. The set is kept in your browser, and **copy link** gives a link that opens the page with it. Up to 12 questions; `POST /questions` with `{"questions": {...}}` does the same without the page, and `GET /questions` returns the active set. The Core AI backends answer any set that fits their export (see below): the panel shows how much of it a set uses, and a set too big for it runs on MLX only. The default questions are `QUESTIONS` in `decide.py`.
 
 | Variable | Default |
 | --- | --- |
@@ -65,7 +72,7 @@ The two models are on Hugging Face, [ivanfioravanti/d1-2B-gestures-CoreAI](https
 cd coreai/swift && swift build -c release
 ```
 
-To export the models yourself instead (uv, and a checkout of [apple/coreai-models](https://github.com/apple/coreai-models) at `~/github/coreai-models`), then run with `D1_COREAI_DIR=coreai/out`:
+To export the models locally (uv, and a checkout of [apple/coreai-models](https://github.com/apple/coreai-models) at `~/github/coreai-models`), then run with `D1_COREAI_DIR=coreai/out`:
 
 ```bash
 cd coreai && mkdir -p out
@@ -79,23 +86,20 @@ hf download LiquidAI/d1-2B                       # the PyTorch weights, 3.8 GB
 .venv/bin/python parity.py out/d1_gpu_prompt_fp16.aimodel:gpu out/d1_ane_prompt_fp16.aimodel:ane   # optional: the parity table
 ```
 
-The questions are not baked into the export. `decide.py` builds the prompt for the active questions when they are set (at start, `QUESTIONS`; then whatever the page asks), and the Core AI workers restart with it in a second or two, on the same models. The export is padded to fixed sizes: up to 640 tokens of prompt (the image is 220 of them; today's questions use 578), 16 answer positions (a choice takes 1, a box 5) and 1152 readout tokens. Questions that don't fit make the Core AI backends refuse with the sizes (the page disables them and says why), and MLX still works. `export_gpu.py` / `export_ane.py` trace the function with the prompt from `coreai/questions.py`, which only sets the shapes. The Core AI export is traced at one shape, 16:9 (640×360, what the page sends from a 16:9 webcam). Core AI centre-crops other frame shapes, such as a 4:3 webcam or a square photo, to 16:9 before the model sees them. Its boxes are mapped back onto the whole frame, but anything outside the crop is invisible to it: a face cut by the crop gets a box that stops at the crop's edge. MLX takes every shape as it is.
+The export supports 640 prompt tokens (220 for the image), 16 answer slots and 1152 readout tokens. The page disables Core AI when the active questions exceed those limits. On a preset change, the workers stop and restart with the new prompt on the next request. The first start may download weights and specialize the model for the selected hardware.
 
-Measured on an M5 Max (macOS 27.3) with the same frame. Each decision is timed from the picture to the answers (preprocessing, model, readout), median of 30 after 5 warm-ups. Model time is measured inside the Swift worker:
+Core AI center-crops frames to 16:9 and maps its boxes back onto the full image. Keep the hand within the central 16:9 area when using a different aspect ratio. MLX processes the full frame.
 
-| | MLX 8-bit | Core AI GPU (fp16) | Core AI Neural Engine (fp16) |
-| --- | --- | --- | --- |
-| per decision | 59 ms | 55 ms | 182 ms |
-| model time only | | 43 ms | 171 ms |
-| first start ever (specialization) | | 12 s | **56 s** |
-| start when cached | | 0.6 s | 0.3 s |
-| size | 2.1 GB | 3.1 GB | 3.1 GB |
-| matches MLX on 9 test frames | reference | 9 / 9 | 8 / 9 |
-
-The Neural Engine build runs the whole graph on the Neural Engine. Its compiled plan is marked `mps.fullyPlacedOnANE` and `mps.noGPUActivity`. It is about 3× slower than the GPU for this 2B model but draws far less power: about 3.2 J per decision against 6.0 J for Core AI GPU and 8.4 J for MLX (whole Mac, above idle). Each MLP is computed in 8 chunks of its hidden channels, which made the Neural Engine 1.4× faster (from 236 to 171 ms); int8 weights did not help it. The first switch to it compiles for the Neural Engine, which takes about a minute once, and the request waits. After that, Core AI's cache makes it start in under a second. Its one miss on the test frames is a uniform mid-gray frame: same answers, but a probability off by 0.051, against the 0.05 tolerance. Every real frame matches. To match the GPU's numbers, the Neural Engine export needed exact rescalings of its weights: the Neural Engine loses precision on very small activations and its sigmoid is coarse. The [model card](https://huggingface.co/ivanfioravanti/d1-2B-gestures-CoreAI) lists every change. Int8 weights halve the size, but they bring no speedup on the GPU and don't keep parity on the Neural Engine, so they are not used.
-
-With [mactop](https://github.com/metaspartan/mactop) installed (`brew install mactop`), two charts under the video show the last 60 s of the Mac's CPU, GPU and Neural Engine load and its power draw, one sample a second, camera on or off, with a mark at each backend switch. **Stop metrics** pauses them, and `decide.py` stops mactop a few seconds later. The figures cover the whole Mac, not just d1: macOS camera effects such as backgrounds also run on the Neural Engine, so turn them off in Control Center → Video Effects before comparing backends. Even with them off, an open camera keeps macOS camera processing busy on the Neural Engine, so for a clean comparison press **Load video** and pick a local movie instead: the page plays it (it never leaves the browser, only its frames go to `decide.py`) and the camera stays closed. On an M5 Max the Neural Engine runs at 100% busy and about 35 W for the whole Mac, while either GPU backend draws about 130 W.
+With [mactop](https://github.com/metaspartan/mactop) installed (`brew install mactop`), two charts under the video show the last 60 s of the Mac's CPU, GPU and Neural Engine load and its power draw, one sample a second, camera on or off, with a mark at each backend switch. **Stop metrics** pauses them, and `decide.py` stops mactop a few seconds later. The figures cover the whole Mac, not just d1: macOS camera effects such as backgrounds also run on the Neural Engine, so turn them off in Control Center → Video Effects before comparing backends. Even with them off, an open camera keeps macOS camera processing busy on the Neural Engine, so for a clean comparison press **Load video** and pick a local movie instead: the page plays it and sends its frames to the local server while keeping the camera closed.
 
 ## Limits
 
-The model looks at one still frame at a time, so it sees poses, not movements: a wave or a nod would need a short clip. Subtle expressions are harder to read, so exaggerate them.
+D1 classifies one frame at a time. The counter can appear as soon as the pose is visible, and a classification error can cause a draw or a loss.
+
+## Checks
+
+Run the server regression tests with Python 3.
+
+```bash
+python3 -m unittest discover -s tests -v
+```

@@ -29,7 +29,7 @@ h1{font-family:var(--display);font-weight:760;letter-spacing:-.045em;line-height
 .facts b{color:var(--local);font-weight:500;display:inline-block;min-width:3ch;text-align:right}
 .ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .hint{font-family:var(--mono);font-size:.8em;color:var(--muted)}
-#state{flex-basis:100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#state{flex-basis:100%;min-width:0;overflow-wrap:anywhere}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
 .seg button{background:transparent;border:0;border-radius:999px;padding:.45em 1em;font-family:var(--mono);font-size:.8em;cursor:pointer;color:var(--muted)}
 .seg button:hover:not(:disabled){color:var(--ink)}
@@ -145,16 +145,27 @@ const $ = s => document.querySelector(s);
 // Display labels for known answer keys (the default questions' options); any other key shows as it is, humanised.
 const LABELS = {thumbs_up:'👍 Thumbs up', thumbs_down:'👎 Thumbs down', ok:'👌 OK', peace:'✌️ Peace / Victory', open_palm:'✋ Open palm',
   pointing:'☝️ Pointing', fist:'✊ Fist', rock:'✊ Rock', paper:'✋ Paper', scissors:'✌️ Scissors', none:'· No gesture', smile:'🙂 Smile', sad:'🙁 Sad', surprised:'😮 Surprised', neutral:'😐 Neutral'};
-const S = {on:false, stream:null, url:null, src:null, run:0, backend:'mlx'};
+const S = {on:false, stream:null, url:null, src:null, run:0, backend:'mlx', request:null};
 const NAMES = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI Neural Engine'};
 const human = k => k.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 const pct = p => Math.round(p * 100) + '%';
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+function readSaved(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch(e){ return fallback; }
+}
+function writeSaved(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+}
 document.querySelectorAll('#be button').forEach(b=>b.onclick = ()=>{
+  if(S.backend === b.dataset.b) return;
   S.backend = b.dataset.b; document.querySelectorAll('#be button').forEach(x=>x.setAttribute('aria-checked', x===b));
-  $('#ms').textContent = '—';
-  if(S.on) show();
-  if(S.on) $('#state').textContent = 'switching to '+NAMES[S.backend]+' (a Core AI worker starts on first use; the Neural Engine\'s very first start takes about a minute)';
+  if(S.on){
+    S.request?.abort();
+    show(); $('#rate').textContent = '—';
+    $('#state').textContent = 'Starting '+NAMES[S.backend]+'. The first Core AI run can take longer to load the model.';
+  }
 });
 function setBackends(backends){  // which backends can run the active questions; a disabled one in use falls back to MLX
   Object.entries(backends||{}).forEach(([k,v])=>{
@@ -181,9 +192,9 @@ function options(q){  // [[answer key, label]] of a question's bars
   if(q.type === 'noul') return [['yes', 'Yes']];
   return [];
 }
-function layout(qs){  // build the tiles and bars for a set of questions
+function layout(qs, rps = false){  // build the tiles and bars for a set of questions
   Q.active = qs; Q.off = {};
-  Q.rps = JSON.stringify(qs) === JSON.stringify(PRESETS[RPS]);
+  Q.rps = rps;
   $('#counter').hidden = !Q.rps;
   $('#now').classList.toggle('rps', Q.rps);
   showCounter(null);
@@ -211,11 +222,11 @@ function said(q, a){  // a tile's one-line answer
   return '—';
 }
 // The boxes d1 is at least MIN.p sure are there (its `found`; d1 itself keeps those at 0.5 or more): drawn and counted.
-const MIN = {p: Math.min(.99, Math.max(.5, +(localStorage.getItem('d1-min') || 70) / 100))};
+const MIN = {p: Math.min(.99, Math.max(.5, (Number(readSaved('d1-min',70)) || 70) / 100))};
 const seen = a => a.type === 'boxes' ? a.boxes.filter(f => f.found >= MIN.p) : a.box && a.found >= MIN.p ? [a] : [];
 $('#minp').value = Math.round(MIN.p * 100);
 $('#minp').onchange = e => { MIN.p = Math.min(.99, Math.max(.5, (+e.target.value || 70) / 100)); e.target.value = Math.round(MIN.p * 100);
-  localStorage.setItem('d1-min', Math.round(MIN.p * 100)); };
+  writeSaved('d1-min', Math.round(MIN.p * 100)); };
 const hideBoxes = () => document.querySelectorAll('.gest-box').forEach(b => b.hidden = true);
 function boxEl(i){  // the i-th box on the video, made on first use
   const all = document.querySelectorAll('#boxes .gest-box');
@@ -331,9 +342,9 @@ $('#qlist').onclick = e => {
 };
 $('#addq').onclick = () => { EDIT.push({name:'question_' + (EDIT.length + 1), type:'noul', instructions:'', opts:[], low:0, high:20, step:1, max:3}); editor(); custom(); };
 // Your own set is kept (in this browser) while you look at the presets: picking Custom brings it back.
-const custom = () => { $('#preset').value = 'Custom'; localStorage.setItem('d1-custom', JSON.stringify(EDIT)); };
+const custom = () => { $('#preset').value = 'Custom'; writeSaved('d1-custom', EDIT); };
 // Sets you save by name (this browser's localStorage), listed under "Saved" in the menu as "mine:<name>".
-const SAVED = JSON.parse(localStorage.getItem('d1-presets') || '{}');
+const SAVED = Object.assign(Object.create(null), readSaved('d1-presets', {}));
 let LAST = '';  // the saved set last picked: save as… offers its name, to update it after edits
 const preset = k => k.startsWith('mine:') ? SAVED[k.slice(5)] : PRESETS[k];
 function presets(pick){  // fill the menu, pick one
@@ -343,18 +354,18 @@ function presets(pick){  // fill the menu, pick one
   $('#preset').value = pick; $('#forget').hidden = !pick.startsWith('mine:'); if(pick.startsWith('mine:')) LAST = pick.slice(5);
 }
 $('#preset').onchange = () => {
-  const k = $('#preset').value, p = preset(k), mine = k === 'Custom' && JSON.parse(localStorage.getItem('d1-custom') || 'null');
+  const k = $('#preset').value, p = preset(k), mine = k === 'Custom' && readSaved('d1-custom', null);
   $('#forget').hidden = !k.startsWith('mine:'); if(k.startsWith('mine:')) LAST = k.slice(5);
-  if(p || mine){ EDIT = p ? fromQ(p) : mine; editor(); }
+  if(p || Array.isArray(mine)){ EDIT = p ? fromQ(p) : mine; editor(); }
 };
 $('#save').onclick = () => {
   const cur = $('#preset').value, name = prompt('Save these questions as:', cur.startsWith('mine:') ? cur.slice(5) : LAST)?.trim();
   if(!name) return;
-  SAVED[name] = toQ(); localStorage.setItem('d1-presets', JSON.stringify(SAVED)); presets('mine:' + name);
+  SAVED[name] = toQ(); writeSaved('d1-presets', SAVED); presets('mine:' + name);
 };
 $('#forget').onclick = () => {
   const k = $('#preset').value.slice(5); if(!confirm(`Delete the saved set "${k}"?`)) return;
-  delete SAVED[k]; localStorage.setItem('d1-presets', JSON.stringify(SAVED)); presets('Custom'); custom();
+  delete SAVED[k]; writeSaved('d1-presets', SAVED); presets('Custom'); custom();
 };
 const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
@@ -369,77 +380,95 @@ function budget(b){  // the active questions against the Core AI export's sizes
     part(b.readout, b.limits.readout, 'answer tokens') + (b.problem ? ' · <span class="over">too big for Core AI: MLX only</span>' : '');
 }
 function apply(j){  // the server's answer to GET or POST /questions
-  layout(j.questions); budget(j.budget); setBackends(j.backends);
+  layout(j.questions, j.rps); budget(j.budget); setBackends(j.backends);
+  EDIT = fromQ(j.questions); editor();
   const same = q => JSON.stringify(q) === JSON.stringify(j.questions);
   const name = Object.keys(PRESETS).find(k => same(PRESETS[k])) || Object.keys(SAVED).map(k => 'mine:' + k).find(k => same(preset(k)));
   presets(name || 'Custom');
   if(!name) custom();  // a set of your own, asked: the one Custom brings back
-  if(S.on) loop(++S.run);
+  if(S.on){ S.request?.abort(); loop(++S.run); }
 }
 async function ask(qs){  // set the questions on the server; returns false (and says why) if it refuses them
-  $('#qerr').textContent = 'setting…'; document.querySelectorAll('.q.err').forEach(q => q.classList.remove('err'));
+  if($('#apply').disabled) return false;
+  $('#apply').disabled = true;
+  $('#qerr').textContent = 'Applying questions…'; document.querySelectorAll('.q.err').forEach(q => q.classList.remove('err'));
   try{
     const r = await fetch('/questions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({questions:qs})});
     const j = await r.json();
     if(!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-    apply(j); localStorage.setItem('d1-rps-questions', JSON.stringify(qs)); $('#qerr').textContent = ''; return true;
+    apply(j); writeSaved('d1-rps-questions', j.questions); $('#qerr').textContent = ''; return true;
   }catch(e){
     $('#qerr').textContent = e.message;
     const m = /question '([^']+)'/.exec(e.message), i = m ? EDIT.findIndex(x => x.name.trim() === m[1]) : -1;
     if(i >= 0) document.querySelector(`.q[data-i="${i}"]`).classList.add('err');
     return false;
-  }
+  }finally{ $('#apply').disabled = false; }
 }
 $('#apply').onclick = () => ask(toQ());
 fetch('/questions').then(r => r.json()).then(async j => {  // the link's questions, else this browser's last, else the server's
   Object.assign(PRESETS, j.presets);
   presets('Custom');
   let want = null;
-  try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : JSON.parse(localStorage.getItem('d1-rps-questions')); }catch(e){}
-  EDIT = fromQ(want || j.questions); editor();
+  try{ want = location.hash.startsWith('#q=') ? JSON.parse(unb64(location.hash.slice(3))) : readSaved('d1-rps-questions', null); }catch(e){}
   if(want && JSON.stringify(want) !== JSON.stringify(j.questions)){ if(!(await ask(want))){ apply(j); $('#qs').open = true; } }
   else apply(j);
-}).catch(() => { layout({}); $('#qsum').textContent = 'd1 is not answering (uv run decide.py)'; });
+}).catch(() => { layout({}); $('#qsum').textContent = 'd1 is not answering (uv run --locked decide.py)'; });
 
-async function loop(run){  // one frame in flight at a time: the next one leaves when the answer comes back
-  const v = $('#vid'), c = document.createElement('canvas');
+async function loop(run){  // one frame in flight at a time
+  const v = $('#vid'), c = document.createElement('canvas'), ctx = c.getContext('2d');
   let n = 0, t1 = performance.now();
-  while(S.on && S.run===run){
-    const t0 = performance.now();
+  while(S.on && S.run === run){
+    if(v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !v.videoWidth){
+      await delay(80);
+      continue;
+    }
+    const t0 = performance.now(), backend = S.backend;
+    let request;
     try{
-      c.width = 640; c.height = Math.round(640 * v.videoHeight / v.videoWidth) || 480;
-      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      const height = Math.max(1, Math.round(640 * v.videoHeight / v.videoWidth));
+      if(c.width !== 640 || c.height !== height){ c.width = 640; c.height = height; }
+      ctx.drawImage(v, 0, 0, c.width, c.height);
       const blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', .85));
       if(S.run !== run) return;
-      const backend = S.backend;
-      const r = await fetch('/run?backend='+backend, {method:'POST', headers:{'Content-Type':'image/jpeg'}, body:blob});
+      if(S.backend !== backend) continue;
+      if(!blob) throw new Error('Could not encode the video frame.');
+      request = new AbortController();
+      S.request = request;
+      const r = await fetch('/run?backend='+backend, {
+        method:'POST', headers:{'Content-Type':'image/jpeg'}, body:blob, signal:request.signal
+      });
       const j = await r.json().catch(()=>({}));
+      if(S.run !== run) return;
+      if(S.backend !== backend || request.signal.aborted) continue;
       if(!r.ok || !j.answers) throw new Error(j.error || 'HTTP '+r.status);
-      if(S.run!==run) return;
-      if(j.backend!==S.backend) continue;  // the selector moved while this frame was out
       show(j.answers, j.ms, j.usage.input_tokens, j.mac_move);
       n++; const dt = performance.now() - t1; if(dt > 1000){ $('#rate').textContent = (n*1000/dt).toFixed(1); n = 0; t1 = performance.now(); }
       $('#state').textContent = 'live · '+NAMES[backend]+' · round trip '+Math.round(performance.now()-t0)+' ms'+(j.startup_s ? ' · worker started in '+j.startup_s+' s' : '');
     }catch(e){
       if(S.run !== run) return;
-      show();
-      $('#state').textContent = (e instanceof TypeError ? 'd1 is not answering (uv run decide.py): ' : '')+e.message;  // a backend's own error says what is missing
-      await new Promise(r=>setTimeout(r, 1500));
+      if(e.name === 'AbortError' || S.backend !== backend) continue;
+      show(); $('#rate').textContent = '—';
+      $('#state').textContent = (e instanceof TypeError ? 'Cannot reach d1: ' : '')+e.message;
+      await delay(1500);
+    }finally{
+      if(S.request === request) S.request = null;
     }
   }
 }
 // Live charts of the Mac's CPU / GPU / Neural Engine busy % and watts (GET /machine, mactop, ~1 sample/s), recorded with or
 // without the camera; the Stop metrics switch stops polling, and the server stops mactop a few seconds later.
-const MON = {pts:[], n:-1, hover:null, on:true, note:'Waiting for the first sample…'}, SPAN = 60000, SERIES = [['cpu','CPU'],['gpu','GPU'],['ane','Neural Engine']];
+const MON = {pts:[], n:-1, hover:null, on:true, pending:false, note:'Waiting for the first sample…'}, SPAN = 60000, SERIES = [['cpu','CPU'],['gpu','GPU'],['ane','Neural Engine']];
 const SHORT = {'mlx':'MLX', 'coreai-gpu':'Core AI GPU', 'coreai-ane':'Core AI ANE', 'off':'camera off'};
 NAMES.off = 'camera off';
 async function poll(){
-  if(!MON.on || MON.off) return;
+  if(!MON.on || MON.off || MON.pending) return;
+  MON.pending = true;
   try{
     const m = await (await fetch('/machine')).json();
-    if(m.n == null || m.n === MON.n) return;  // no sample yet, or the same one again
+    if(!MON.on || m.n == null || m.n === MON.n) return;  // no sample yet, or the same one again
     MON.n = m.n; MON.pts.push({t:performance.now(), backend: S.on ? S.backend : 'off', ...m}); draw();
   }catch(e){}
+  finally{ MON.pending = false; }
 }
 setInterval(poll, 1000); poll();
 $('#metrics').onclick = () => {
@@ -506,10 +535,11 @@ function fit(){  // the stage stays 16:9; the video (and its boxes) take the lar
 }
 addEventListener('resize', fit);
 function stop(){  // one stop for both sources: the camera or a local video file
-  S.on = false; S.run++;
+  S.on = false; S.run++; S.src = null;
+  S.request?.abort(); S.request = null;
   if(S.stream) S.stream.getTracks().forEach(t=>t.stop()); S.stream = null;
   const v = $('#vid'); v.pause(); v.srcObject = null; v.removeAttribute('src'); v.load();
-  if(S.url) URL.revokeObjectURL(S.url); S.url = null; S.src = null;
+  if(S.url) URL.revokeObjectURL(S.url); S.url = null;
   show(); $('#rate').textContent = '—';
   $('#state').textContent = ''; $('#stage').onclick = null;
   $('#idle').hidden = false; S.ar = 16/9; fit();
@@ -518,12 +548,15 @@ function stop(){  // one stop for both sources: the camera or a local video file
 async function start(src){  // src: 'camera' or a File
   stop();
   const run = S.run, v = $('#vid'), file = src !== 'camera';
+  S.src = file ? 'file' : 'camera';
+  $(file ? '#file' : '#go').textContent = file ? 'Cancel video' : 'Cancel camera';
+  $('#state').textContent = file ? 'Opening video…' : 'Opening camera…';
   const play = async () => {
     await v.play();
     if(S.run !== run) return;
     $('.gest-mirror').classList.toggle('flat', file);
     S.ar = v.videoWidth / v.videoHeight || 16/9; fit(); $('#idle').hidden = true;
-    S.on = true; S.src = file ? 'file' : 'camera';
+    S.on = true;
     $(file ? '#file' : '#go').textContent = file ? 'Stop video' : 'Stop camera';
     loop(run);
   };
@@ -537,6 +570,10 @@ async function start(src){  // src: 'camera' or a File
       const stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280}, height:{ideal:720}}, audio:false});
       if(S.run !== run){ stream.getTracks().forEach(t => t.stop()); return; }
       v.srcObject = S.stream = stream;
+      stream.getVideoTracks().forEach(track => track.addEventListener('ended', () => {
+        if(S.stream !== stream) return;
+        stop(); $('#state').textContent = 'The camera stopped. Start it again to continue.';
+      }, {once:true}));
     }
     v.loop = file; v.muted = v.defaultMuted = true; v.playsInline = true;
     try{ await play(); }
@@ -548,6 +585,10 @@ async function start(src){  // src: 'camera' or a File
     }
   }catch(e){ fail(e); }
 }
+$('#vid').addEventListener('error', () => {
+  if(!S.on) return;
+  stop(); $('#state').textContent = 'The video stopped. Pick a source to continue.';
+});
 $('#go').onclick = () => S.src==='camera' ? stop() : start('camera');
 $('#file').onclick = () => S.src==='file' ? stop() : $('#pick').click();
 $('#pick').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if(f) start(f); };  // the file stays in the browser
