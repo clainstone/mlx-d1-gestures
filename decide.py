@@ -5,7 +5,7 @@
 # ///
 """Rock, paper, scissors with d1-2B (Liquid AI) on Apple Silicon.
 
-    uv run decide.py            # then open http://127.0.0.1:8049
+    uv run decide.py            # then open the URL printed by the server
 
 GET  /       -> index.html, the webcam page
 POST /run    body: a JPEG frame -> {"answers": {...}, "usage": {"input_tokens": n, "output_tokens": 0}, "ms": ..., "backend": ...}
@@ -18,14 +18,14 @@ GET  /machine -> {"n": sample number, "cpu": %, "gpu": %, "ane": %, "watts": W}:
              mactop (brew install mactop), started by the first request and stopped ~5 s after the last one
 
 One forward pass answers every question with calibrated probabilities and generates no tokens.
-Listens on 127.0.0.1 only (DECIDE_PORT, default 8049): frames never leave this Mac.
+Listens on 127.0.0.1 only, on port 8050 by default or a free port if 8050 is occupied.
 """
-import http.server, io, json, os, shutil, subprocess, sys, threading, time, urllib.parse
+import errno, http.server, io, json, os, shutil, subprocess, sys, threading, time, urllib.parse
 from mlx_vlm import load
 from PIL import Image
 
 MODEL = os.environ.get("DECIDE_MODEL", "LiquidAI/d1-2B-MLX-8bit")
-PORT = int(os.environ.get("DECIDE_PORT", 8049))
+PORT = int(os.environ.get("DECIDE_PORT", 8050))
 MAX_FRAME = 4 * 1024 * 1024
 PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
@@ -264,5 +264,21 @@ class Handler(http.server.BaseHTTPRequestHandler):  # single-threaded on purpose
         pass
 
 
-print("d1 ready: open http://127.0.0.1:%d" % PORT, flush=True)
-http.server.HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+try:
+    server = http.server.HTTPServer(("127.0.0.1", PORT), Handler)
+except OSError as exc:
+    if exc.errno != errno.EADDRINUSE:
+        raise
+    if "DECIDE_PORT" in os.environ:
+        raise SystemExit(f"Port {PORT} is in use. Set DECIDE_PORT to a free port or unset it for automatic selection.") from None
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+
+with server:
+    url = f"http://127.0.0.1:{server.server_port}"
+    print(f"d1 ready: open {url}", flush=True)
+    if "--open" in sys.argv[1:]:
+        subprocess.run(["open", url], check=False)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass

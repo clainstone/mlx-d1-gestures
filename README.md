@@ -12,7 +12,7 @@ Requires Apple Silicon and [uv](https://docs.astral.sh/uv/).
 ./start.sh
 ```
 
-It starts `decide.py` and opens <http://127.0.0.1:8049> once the model is ready (Ctrl-C stops it). Press **Start camera** and allow it. The first run downloads the model (2.2 GB). Prefer it by hand? `uv run decide.py`, then open the page.
+It starts `decide.py` and opens the browser once the server is ready. The default is <http://127.0.0.1:8050>. If that port is occupied, the server chooses a free local port. Ctrl-C stops the server. Press **Start camera** and allow it. The first run downloads the model (2.2 GB). To start manually, run `uv run decide.py` and use the URL it prints.
 
 Keep one hand close to the camera and show a fist, an open palm, or two fingers. Use **Load video** to replay a local recording. Once the packages and model weights are cached, start with `UV_OFFLINE=1 HF_HUB_OFFLINE=1 ./start.sh` to run without a download.
 
@@ -52,7 +52,7 @@ A box is drawn, and counted, only when d1 is at least 70% sure it is there (d1 i
 
 | Variable | Default |
 | --- | --- |
-| `DECIDE_PORT` | `8049` |
+| `DECIDE_PORT` | `8050` (set a specific port or leave unset for automatic fallback) |
 | `DECIDE_MODEL` | `LiquidAI/d1-2B-MLX-8bit` |
 
 ## Core AI: the same model on the GPU or the Neural Engine (optional, macOS 27)
